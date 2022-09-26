@@ -131,7 +131,7 @@ class outputLayer(Layer):
             # Sum the weighted spikes from the previous layer for the current neuron
             n.update(sum([w*s for w,s in zip(weights, spikes)]))
             pot = n.get_potential()
-        print(self.get_output())
+        # print(self.get_output())
 
 
 
@@ -166,7 +166,7 @@ class Network:
 
 
 
-def initialize(nr_input, nr_hidden, nr_output, threshold = 1.5, leakage = 0.01):
+def initialize(nr_input, nr_hidden, nr_output, threshold = 1.5, leakage = 0.01, number_of_networks = 1):
     """
     :param nr_input: number of input neurons
     :param nr_hidden: number of hidden neurons
@@ -174,31 +174,33 @@ def initialize(nr_input, nr_hidden, nr_output, threshold = 1.5, leakage = 0.01):
     :param threshold: threshold for firing
     :param leakage: leakage for updating potential
     """
-    global network
+    global network_list
+    network_list = []
+    for i in range(number_of_networks):
+        input_layer = inputLayer()
+        for i in range(nr_input):
+            # Generate a list with length of nr_hidden, with random values between 0 and 1
+            weight_list = [random.random() for _ in range(nr_hidden)]
+            # The line above is the same as:
+            # weight_list = []
+            # for i in range(nr_hidden):
+            #     weight_list.append(random.random())
+            input_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=weight_list, leakage=leakage))
+        # Creating hidden layer
+        hidden_layer = hiddenLayer(input_layer)
+        for i in range(nr_hidden):
+            # Generate a list with length of nr_output, with random values between 0 and 1
+            weight_list = [random.random() for _ in range(nr_output)]
+            hidden_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=weight_list, leakage=leakage))
+        # Creating output layer
+        output_layer = outputLayer(hidden_layer)
+        for i in range(nr_output):
+            output_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=[1], leakage=leakage))
 
-    input_layer = inputLayer()
-    for i in range(nr_input):
-        # Generate a list with length of nr_hidden, with random values between 0 and 1
-        weight_list = [random.random() for _ in range(nr_hidden)]
-        # The line above is the same as:
-        # weight_list = []
-        # for i in range(nr_hidden):
-        #     weight_list.append(random.random())
-        input_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=weight_list, leakage=leakage))
-    # Creating hidden layer
-    hidden_layer = hiddenLayer(input_layer)
-    for i in range(nr_hidden):
-        # Generate a list with length of nr_output, with random values between 0 and 1
-        weight_list = [random.random() for _ in range(nr_output)]
-        hidden_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=weight_list, leakage=leakage))
-    # Creating output layer
-    output_layer = outputLayer(hidden_layer)
-    for i in range(nr_output):
-        output_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=[1], leakage=leakage))
-
-    # Creating network
-    network = Network(input_layer, hidden_layer, output_layer)
-    return network
+        # Creating network
+        network = Network(input_layer, hidden_layer, output_layer)
+        network_list.append(network)
+    return network_list
 
 
 def observe():
@@ -211,15 +213,27 @@ def update():
 if __name__ == '__main__':
     # Get total pixels in an image
     nr_pix = train_X.shape[1] * train_X.shape[2]
-    initialize(nr_pix, 20, 10)
+    initialize(nr_pix, 20, 10, number_of_networks=1)
 
 
     # Create a spiketrain for a image
+    output_arr = []
     spikeTrain = spikeGen.rateCodingRand2D(train_X[0], T = 50)
     num_rows, num_cols = spikeTrain.shape
     for i in range(num_cols):
         inp = (spikeTrain[:,i])
-        network.update(inp)
+        for network in network_list:
+            network.update(inp)
+            # print(network.outputLayer.get_output())
+            output_arr.append(network.outputLayer.get_output())
+    arr = np.array(output_arr)
+    neuralData = np.random.randint([10, 50])
+
+    arr = np.swapaxes(arr,0,1)
+    plt.eventplot(arr)
+    plt.show()
+    # print(output_arr)
+
 
 
 

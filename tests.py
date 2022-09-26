@@ -66,11 +66,30 @@ if __name__ == '__main__':
     # # Spike train testing
     # spikeTrain = spikeGen.rateCodingRand2D(train_X[0], T=15)
     # print("done")
+    import plotly.express as px
+
 
     # some numpy testing
-
-    arr = np.array([[1,2,3],[4,5,6],[7,8,9]])
+    spike = 100 * np.random.random(100)
+    arr = np.array([[1,0,0],[1,1,0],[0,1,9]])
     print(arr)
     num_rows, num_cols = arr.shape
     for i in range(num_cols):
         print(arr[:,i])
+    # FUNKER IKEK!!
+    one = [[0,0,0,1,0,1,0,1,0,1], [1,0,1,1,0,1,0,1,0,0]]
+    y = np.linspace(1, 10, num=10)
+    x = [w*s for w,s in zip(one[0], y)]
+    x2 =  [w*s for w,s in zip(one[1], y)]
+    one = [x,x2]
+    lineoffsets1 = np.array([0, 1])
+
+    linelengths1 = [0.5]
+
+    fig, axs = plt.subplots()
+    axs.eventplot(one,
+                  lineoffsets=lineoffsets1,
+                  linelengths=linelengths1)
+
+    plt.eventplot(x)
+    plt.show()
