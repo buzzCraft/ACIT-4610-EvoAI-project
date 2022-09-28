@@ -4,6 +4,8 @@ from matplotlib import pyplot as plt
 # from pylab import *
 import numpy as np
 import spikeGen
+import copy
+from network import *
 
 # Image set
 (train_X, train_y), (test_X, test_y) = mnist.load_data()
@@ -11,152 +13,6 @@ import spikeGen
 
 
 # Neural spiking network
-class Neuron:
-    def __init__(self, id, threshold, leakage, weight):
-        self.id = id
-        self.threshold = threshold
-        self.weight = weight
-        self.potential = 0
-        self.fired = False
-        self.spike = 0
-        self.leakage = leakage
-        # self.connections = []
-
-
-    # Function to fire the neuron
-    def fire(self):
-        self.fired = True
-        self.spike = 1 #TODO endres til 1 eller noe sånn etterhvet
-        self.potential = 0
-
-    # Function to reset the neuron
-    def reset(self):
-        self.fired = False
-        self.spike = 0
-
-
-    # Function to update the neuron
-    # If the neuron has fired, reset it
-    # If the neuron has not fired, update its potential with leakage
-    def update(self, input):
-
-        self.potential += (input) - self.leakage*self.potential #(input * self.weight) - self.leakage*self.potential
-
-        if self.potential >= self.threshold:
-            self.fire()
-        else:
-            self.reset()
-
-    # Get the output of the neuron
-    def get_spike(self):
-        return self.spike
-
-    def get_spike_and_weight(self, next_neuron):
-        return self.spike, self.weight[next_neuron.id]
-
-    def get_potential(self):
-        return self.potential
-
-
-class Layer:
-    """
-    Base class for Layers
-    """
-    def __init__(self):
-        self.neurons = []
-
-    def get_spikes(self):
-        """
-        :return: list of spikes
-        """
-        return [n.get_spike() for n in self.neurons]
-    def get_weights(self, id):
-        """
-        :return: list of weights
-        """
-        return [n.weight[id] for n in self.neurons]
-
-
-
-
-class inputLayer(Layer):
-    """
-    Input layer with a update function that takes a list of inputs
-    """
-    def __init__(self):
-        super().__init__()
-    # Take a list of inputs (one for each layer and update the neurons)
-    def update(self, input_list):
-        for i in range(len(self.neurons)):
-            self.neurons[i].update(input_list[i])
-
-
-
-class hiddenLayer(Layer):
-    """
-    Hidden layer with a update function that takes the previous layer as input
-    """
-    def __init__(self, prev_layer):
-        super().__init__()
-        self.prev_layer = prev_layer
-
-    # Take the previous layer as input and update the neurons
-    def update(self):
-        for n in self.neurons:
-            # Get the spikes from the previous layer for current neuron
-            weights = self.prev_layer.get_weights(n.id)
-            spikes = self.prev_layer.get_spikes()
-            # Sum the weighted spikes from the previous layer for the current neuron
-            n.update(sum([w*s for w,s in zip(weights, spikes)]))
-            # print(sum([w*s for w,s in zip(weights, spikes)]))
-            # Means the same as:
-            # [1,3,4] [2,4,5] -> 1*2 + 3*4 + 4*5 = 26
-
-
-class outputLayer(Layer):
-    """
-    Output layer with a update function that takes the previous layer as input
-    And has a get_output function that returns the output of the layer
-    """
-    def __init__(self, prev_layer):
-        super().__init__()
-        self.prev_layer = prev_layer
-
-    # Take the previous layer as input and update the neurons
-    def update(self):
-        for n in self.neurons:
-            # Get the spikes from the previous layer for current neuron
-            weights = self.prev_layer.get_weights(n.id)
-            spikes = self.prev_layer.get_spikes()
-            # Sum the weighted spikes from the previous layer for the current neuron
-            n.update(sum([w*s for w,s in zip(weights, spikes)]))
-            pot = n.get_potential()
-        # print(self.get_output())
-
-
-
-
-    def get_output(self):
-        return [n.get_spike() for n in self.neurons]
-
-
-class Network:
-    """
-    A class to represent a network
-    Calling update will update each layer in the network
-    """
-    def __init__(self, input_l, hidden_l, output_l):
-        self.inputLayer = input_l
-        self.hiddenLayer = hidden_l
-        self.outputLayer = output_l
-
-    def update(self, input):
-        self.inputLayer.update(input)
-        self.hiddenLayer.update()
-        self.outputLayer.update()
-
-    def observe(self):
-        pass
 
 
 
@@ -166,7 +22,7 @@ class Network:
 
 
 
-def initialize(nr_input, nr_hidden, nr_output, threshold = 1.5, leakage = 0.01, number_of_networks = 1):
+def initialize(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_of_networks = 1):
     """
     :param nr_input: number of input neurons
     :param nr_hidden: number of hidden neurons
@@ -176,29 +32,34 @@ def initialize(nr_input, nr_hidden, nr_output, threshold = 1.5, leakage = 0.01, 
     """
     global network_list
     network_list = []
-    for i in range(number_of_networks):
+    for n in range(number_of_networks):
         input_layer = inputLayer()
         for i in range(nr_input):
             # Generate a list with length of nr_hidden, with random values between 0 and 1
-            weight_list = [random.random() for _ in range(nr_hidden)]
+            # weight_list = [random.uniform(0, 1) for i in range(nr_hidden)]
+            weight_list = [random.gauss(0,1) for _ in range(nr_hidden)]
+
             # The line above is the same as:
             # weight_list = []
             # for i in range(nr_hidden):
             #     weight_list.append(random.random())
+            # Setting random threshold for each neuron
             input_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=weight_list, leakage=leakage))
         # Creating hidden layer
         hidden_layer = hiddenLayer(input_layer)
         for i in range(nr_hidden):
+            threshold = round(random.uniform(0, 5), 3)
             # Generate a list with length of nr_output, with random values between 0 and 1
             weight_list = [random.random() for _ in range(nr_output)]
             hidden_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=weight_list, leakage=leakage))
         # Creating output layer
         output_layer = outputLayer(hidden_layer)
         for i in range(nr_output):
+            threshold = round(random.uniform(0, 5), 3)
             output_layer.neurons.append(Neuron(id=i, threshold=threshold, weight=[1], leakage=leakage))
 
         # Creating network
-        network = Network(input_layer, hidden_layer, output_layer)
+        network = Network(n, input_layer, hidden_layer, output_layer)
         network_list.append(network)
     return network_list
 
@@ -208,31 +69,128 @@ def observe():
 
 def update():
     pass
+def plot_spike_train(spike_train, title):
+    i=0
+    for train in spike_train:
+        train = train + i
+        plt.plot(train, label='Neuron {}'.format(i))
+        i +=1
+    plt.title(title)
+    plt.yticks([0,1,2,3,4,5,6,7,8,9])
+    # plt.legend()
+    plt.show()
+
+#TODO NOT DONE!!!
+def tournament_selection(network_list, pred_list):
+    """
+    Take in a list of networks and return the one with the best prediction score
+    :param network_list: list of networks
+    :param pred_list: list of prediction scores
+    :return: network with the best prediction score
+    """
+    # Find index of the highest value in the array (eg the best network
+    index = np.argmax(pred_list)
+    # Return the network with the best prediction score
+    return network_list[index]
+
+
+
+
+def evolve():
+    predict = []
+    n = network_list
+    # Training epochs
+    for ep in range(100):
+        print(f'Epoch {ep}')
+        # Images to train on
+        for p in range(20):
+            print(f'Image {p}')
+            # Genereating a spike train for each image
+            spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T = 100)
+            # Get shape of the spike train
+            num_rows, num_cols = spikeTrain.shape
+            # For each timestep
+            start = time.time()
+            for i in range(num_cols):
+                # Get the input for the current timestep
+                inp = (spikeTrain[:,i])
+                # For each network
+
+                for network in n:
+
+                    # Send the input to the network
+                    network.update(inp)
+                    # Save the output of the network
+                    network.store_output()
+            end = time.time()
+            delta = end - start
+            print("took %.2f seconds to process" % delta)
+            for network in n:
+                # Finding prediction score for each network
+                pred_score = network.get_prediction(train_y[p])
+                print(pred_score)
+                predict.append(pred_score)
+            # Find index of the highest value in the array (eg the best network
+            index = np.argmax(predict)
+            print(f'Best network: {index}, the prediction score is {predict[index]}')
+            print(f' The length of n = {len(n)}')
+            result = [predict.index(i) for i in sorted(predict, reverse=True)][:3]
+            keepers = []
+            # Implement tournament selection
+            # Select
+            # 1 vs 1
+
+            predict = []
+            for index in result:
+                keepers.append(n[index])
+            n = []
+
+            plot_spike_train(keepers[0].get_output(), f'Spike train for the number: {train_y[p]}, epoch: {ep}')
+            for network in keepers:
+                network.reset()
+            for _ in range(20):
+                new_network = copy.deepcopy(keepers[random.randint(0,2)])
+                new_network.mutate(w=.5, t=.5, l=.5)
+                n.append(new_network)
+
+
 
 
 if __name__ == '__main__':
+    import time
+
     # Get total pixels in an image
     nr_pix = train_X.shape[1] * train_X.shape[2]
-    initialize(nr_pix, 20, 10, number_of_networks=1)
+    # Nr_input neurons -> number of pixels in an image
+
+    initialize(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05)
+    evolve()
 
 
-    # Create a spiketrain for a image
-    output_arr = []
-    spikeTrain = spikeGen.rateCodingRand2D(train_X[0], T = 50)
-    num_rows, num_cols = spikeTrain.shape
-    for i in range(num_cols):
-        inp = (spikeTrain[:,i])
-        for network in network_list:
-            network.update(inp)
-            # print(network.outputLayer.get_output())
-            output_arr.append(network.outputLayer.get_output())
-    arr = np.array(output_arr)
-    neuralData = np.random.randint([10, 50])
+    # net = network_list[0]
+    # net2 = copy.deepcopy(net)
+    # net2.mutate(weights=True, threshold=False, leakage=False)
+    # network_list.append(net2)
+    # # Create a spiketrain for a image
+    # for p in range(1):
+    #     spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T = 100)
+    #     print(train_y[p])
+    #     num_rows, num_cols = spikeTrain.shape
+    #     for i in range(num_cols):
+    #
+    #         inp = (spikeTrain[:,i])
+    #         for network in network_list:
+    #             network.update(inp)
+    #             # print(network.outputLayer.get_output())
+    #             network.store_output()
+    #
+    #     # arr = np.array(output_arr)
+    #     for network in network_list:
+    #         o = network.get_output()
+    #         plot_spike_train(network.get_output(), f'Spike train for the number: {train_y[p]}')
+    #         print(network.get_prediction())
 
-    arr = np.swapaxes(arr,0,1)
-    plt.eventplot(arr)
-    plt.show()
-    # print(output_arr)
+
 
 
 
