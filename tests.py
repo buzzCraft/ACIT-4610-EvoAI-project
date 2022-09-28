@@ -91,7 +91,7 @@ if __name__ == '__main__':
     # print(n.x)
 
 
-    # test_neuron()
+    test_neuron()
     # one = np.array([[0, 0, 1, 0, 0, 1, 0, 1, 0, 1],[1,0,0,1,0,1,0,1,0,1]])
     # plot_spike_train(one, "test")
     #

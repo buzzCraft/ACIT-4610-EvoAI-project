@@ -130,10 +130,11 @@ def evolve():
                 pred_score = network.get_prediction(train_y[p])
                 print(pred_score)
                 predict.append(pred_score)
+            ######
             # Find index of the highest value in the array (eg the best network
             index = np.argmax(predict)
             print(f'Best network: {index}, the prediction score is {predict[index]}')
-            print(f' The length of n = {len(n)}')
+            print(n[index].prediction_history)
             result = [predict.index(i) for i in sorted(predict, reverse=True)][:3]
             keepers = []
             # Implement tournament selection
@@ -148,11 +149,76 @@ def evolve():
             plot_spike_train(keepers[0].get_output(), f'Spike train for the number: {train_y[p]}, epoch: {ep}')
             for network in keepers:
                 network.reset()
-            for _ in range(20):
+            for _ in range(17):
                 new_network = copy.deepcopy(keepers[random.randint(0,2)])
                 new_network.mutate(w=.5, t=.5, l=.5)
                 n.append(new_network)
+            for net in keepers:
+                n.append(net)
 
+def evolve2():
+    predict = []
+    n = network_list
+    # Training epochs
+    for ep in range(100):
+        print(f'Epoch {ep}')
+        # Images to train on
+        for p in range(2):
+            for net in n:
+                net.reset()
+            print(f'Image {p}')
+            # Genereating a spike train for each image
+            spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T = 100)
+            # Get shape of the spike train
+            num_rows, num_cols = spikeTrain.shape
+            # For each timestep
+            start = time.time()
+            for i in range(num_cols):
+                # Get the input for the current timestep
+                inp = (spikeTrain[:,i])
+                # For each network
+
+                for network in n:
+
+                    # Send the input to the network
+                    network.update(inp)
+                    # Save the output of the network
+                    network.store_output()
+            end = time.time()
+            delta = end - start
+            print("took %.2f seconds to process" % delta)
+            for network in n:
+                # Finding prediction score for each network
+                pred_score = network.get_prediction(train_y[p])
+
+
+            ######
+            # Find index of the highest value in the array (eg the best network
+        for network in n:
+            predict.append(network.get_prediction_score())
+        index = np.argmax(predict)
+        print(f'Best network: {index}, the prediction score is {predict[index]}')
+        print(n[index].prediction_history[-4:])
+        result = [predict.index(i) for i in sorted(predict, reverse=True)][:3]
+        keepers = []
+        # Implement tournament selection
+        # Select
+        # 1 vs 1
+
+        predict = []
+        for index in result:
+            keepers.append(n[index])
+        n = []
+
+        plot_spike_train(keepers[0].get_output(), f'Spike train for the number: {train_y[p]}, epoch: {ep}')
+        for network in keepers:
+            network.reset()
+        for _ in range(17):
+            new_network = copy.deepcopy(keepers[random.randint(0,2)])
+            new_network.mutate(w=.5, t=.5, l=.5)
+            n.append(new_network)
+        for net in keepers:
+            n.append(net)
 
 
 
@@ -164,7 +230,7 @@ if __name__ == '__main__':
     # Nr_input neurons -> number of pixels in an image
 
     initialize(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05)
-    evolve()
+    evolve2()
 
 
     # net = network_list[0]

@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import threading
 import multiprocessing as mp
 
 class Neuron:
@@ -123,7 +124,7 @@ class outputLayer(Layer):
             spikes = self.prev_layer.get_spikes()
             # Sum the weighted spikes from the previous layer for the current neuron
             n.update(sum([w*s for w,s in zip(weights, spikes)]))
-            pot = n.get_potential()
+            # pot = n.get_potential()
         # print(self.get_output())
 
 
@@ -133,12 +134,13 @@ class outputLayer(Layer):
         return [n.get_spike() for n in self.neurons]
 
 
-class Network:
+class Network():
     """
     A class to represent a network
     Calling update will update each layer in the network
     """
     def __init__(self, id, input_l, hidden_l, output_l):
+
         self.id = id
         self.inputLayer = input_l
         self.hiddenLayer = hidden_l
@@ -151,7 +153,7 @@ class Network:
         self.hiddenLayer.update()
         self.outputLayer.update()
 
-
+    #TODO
     # Save predscore
     # Weights, threshold, leakage for every neuron in the network
 
@@ -165,6 +167,10 @@ class Network:
 
     def store_prediction_score(self, pred_score, answer):
         self.prediction_history.append([pred_score, answer])
+
+    def get_prediction_score(self):
+        return sum([x[0] for x in self.prediction_history])
+
 
 
     def get_output(self):
@@ -184,7 +190,8 @@ class Network:
         """
         output = self.get_output()
         prediction = [sum(o) for o in output]
-
+        if sum(prediction)==0:
+            return 0.0
         pred_score=prediction[answer]/sum(prediction)
         self.store_prediction_score(pred_score, answer)
         return pred_score
@@ -244,5 +251,25 @@ class Network:
         self.output = []
 
 
-    def observe(self):
+    def save(self):
+        """
+        Save the network to a file
+        """
+        input_l = []
+        hidden_l = []
+        output_l = []
+        for neuron in self.inputLayer.neurons:
+            input_l.append(neuron.weight)
+            input_l.append(neuron.threshold)
+            input_l.append(neuron.leakage)
+        for neuron in self.hiddenLayer.neurons:
+            hidden_l.append(neuron.weight)
+            hidden_l.append(neuron.threshold)
+            hidden_l.append(neuron.leakage)
+        for neuron in self.outputLayer.neurons:
+            hidden_l.append(neuron.weight)
+            hidden_l.append(neuron.threshold)
+            hidden_l.append(neuron.leakage)
+        #TODO
+        # Save the network to a file
         pass
