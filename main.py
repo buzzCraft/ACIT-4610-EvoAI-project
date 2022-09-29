@@ -163,7 +163,7 @@ def evolve2():
     for ep in range(100):
         print(f'Epoch {ep}')
         # Images to train on
-        for p in range(2):
+        for p in range(10):
             for net in n:
                 net.reset()
             print(f'Image {p}')

@@ -3,6 +3,7 @@ import numpy as np
 import threading
 import multiprocessing as mp
 
+
 class Neuron:
     def __init__(self, id, threshold, leakage, weight):
         self.id = id
@@ -79,6 +80,7 @@ class inputLayer(Layer):
     def __init__(self):
         super().__init__()
     # Take a list of inputs (one for each layer and update the neurons)
+
     def update(self, input_list):
         for i in range(len(self.neurons)):
             self.neurons[i].update(input_list[i])
@@ -98,8 +100,9 @@ class hiddenLayer(Layer):
     def update(self):
         for n in self.neurons:
             # Get the spikes from the previous layer for current neuron
-            weights = self.prev_layer.get_weights(n.id)
+
             spikes = self.prev_layer.get_spikes()
+            weights = self.prev_layer.get_weights(n.id)
             # Sum the weighted spikes from the previous layer for the current neuron
             n.update(sum([w*s for w,s in zip(weights, spikes)]))
             # print(sum([w*s for w,s in zip(weights, spikes)]))
@@ -195,10 +198,9 @@ class Network():
         pred_score=prediction[answer]/sum(prediction)
         self.store_prediction_score(pred_score, answer)
         return pred_score
-        # if prediction.index(max(prediction)) == answer:
-        #     return pred_score
-        # else:
-        #     return 0
+
+    def get_prediction_history(self):
+        return self.prediction_history
 
 
 
@@ -273,3 +275,41 @@ class Network():
         #TODO
         # Save the network to a file
         pass
+
+class Population:
+    def __init__(self):
+        self.networks = []
+        self.generation = 0
+        self.best_network = None
+        self.best_score = 0
+        self.best_networks = []
+        self.best_scores = []
+        self.avg_scores = []
+        self.avg_score = 0
+        self.avg_score_history = []
+        self.best_score_history = []
+
+    def add_network(self, network):
+        self.networks.append(network)
+
+    def get_networks(self):
+        return self.networks
+
+    def update_networks(self, input, answer):
+        for network in self.networks:
+            network.update(input)
+            network.store_output()
+            network.reset()
+        for network in self.networks:
+            network.get_prediction(answer)
+
+    def set_best_network(self):
+        prediction_scores = [network.get_prediction_history()[-1][0] for network in self.networks]
+
+
+        # self.best_network = self.networks[0]
+        # self.best_score = self.best_network.get_prediction_history()[-1][0]
+        # for network in self.networks:
+        #     if network.get_prediction_score() > self.best_score:
+        #         self.best_score = network.get_prediction_history()[-1][0]
+        #         self.best_network = network
