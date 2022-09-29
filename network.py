@@ -5,7 +5,7 @@ import multiprocessing as mp
 
 
 class Neuron:
-    def __init__(self, id, threshold, leakage, weight):
+    def __init__(self, id, threshold, leakage, weight, spikeLength=0):
         self.id = id
         self.threshold = threshold
         self.weight = weight
@@ -14,7 +14,7 @@ class Neuron:
         self.spike = 0
         self.leakage = leakage
         self.spikeVal = 1
-        # self.connections = []
+        self.spike_history = np.zeros(spikeLength)
 
 
     # Function to fire the neuron
@@ -34,11 +34,28 @@ class Neuron:
     # If the neuron has not fired, update its potential with leakage
     def update(self, input):
         self.potential += (input) - self.leakage*self.potential #(input * self.weight) - self.leakage*self.potential
-        if self.fired: self.reset()
+        if self.fired:
+            self.reset()
         elif self.potential >= self.threshold:
             self.fire()
-        # else:
-        #     self.reset()
+    def update_enitre(self, input):
+        self.potential += input - self.leakage*self.potential
+        if self.potential >= self.threshold:
+            return 1
+        else: return 0
+    # Rewriting the update function to update entire spiketrain at once
+    def update_list(self, input):
+        for i in range(len(input)):
+            # Update and get store spike status
+            x = self.update_enitre(i)
+            self.spike_history[i] = self.update_enitre(i)
+
+    def get_spike_history(self):
+        return self.spike_history
+
+    def reset_spike_history(self):
+        self.spike_history = np.zero(len(self.spike_history))
+
 
 
     # Get the output of the neuron
@@ -50,6 +67,9 @@ class Neuron:
 
     def get_potential(self):
         return self.potential
+
+    def get_weights(self):
+        return self.weight
 
 
 class Layer:
@@ -70,6 +90,20 @@ class Layer:
         """
         return [n.weight[id] for n in self.neurons]
 
+    def get_spike_train(self):
+        """
+        :return: list of spikes
+        """
+        return [n.get_spike_history() for n in self.neurons]
+
+    def total_update(self):
+        spikeTrain = np.array(self.prev_layer.get_spike_train())
+        for n in self.neurons:
+            w = n.get_weights()
+            input_train = spikeTrain * n.get_weights()[:, None]
+            input = np.sum(input_train, axis=0)
+            n.update_list(input)
+
 
 
 
@@ -84,6 +118,17 @@ class inputLayer(Layer):
     def update(self, input_list):
         for i in range(len(self.neurons)):
             self.neurons[i].update(input_list[i])
+
+    def total_input(self, input_list):
+        """
+        This list will be the entire input list for the network
+        input_list = [[Network 1 spiketrain],
+                        [Network 2 spiketrain],
+                        ...
+                        [Network n spiketrain]]
+        """
+        for i in range(len(self.neurons)):
+            self.neurons[i].update_list(input_list[i])
 
 
 
@@ -108,6 +153,8 @@ class hiddenLayer(Layer):
             # print(sum([w*s for w,s in zip(weights, spikes)]))
             # Means the same as:
             # [1,3,4] [2,4,5] -> 1*2 + 3*4 + 4*5 = 26
+
+
 
 
 class outputLayer(Layer):
@@ -156,6 +203,14 @@ class Network():
         self.hiddenLayer.update()
         self.outputLayer.update()
 
+    def spike_list_update(self, input):
+        self.inputLayer.total_input(input)
+        self.hiddenLayer.total_update()
+        self.outputLayer.total_update()
+        self.output = self.outputLayer.get_output()
+        self.prediction_history.append(self.output)
+        return self.output
+
     #TODO
     # Save predscore
     # Weights, threshold, leakage for every neuron in the network
@@ -198,6 +253,21 @@ class Network():
         pred_score=prediction[answer]/sum(prediction)
         self.store_prediction_score(pred_score, answer)
         return pred_score
+    def get_prediction_2(self, answer):
+        """
+        :return: the prediction of the network
+        Get the output from the network
+        Sum the number of spikes for each output neuron
+        Return the index of the neuron with the highest sum
+        """
+        output = self.get_output()
+        prediction = [sum(o) for o in output]
+        if sum(prediction)==0:
+            return 0.0
+        pred_score=prediction[answer]/sum(prediction)
+        self.store_prediction_score(pred_score, answer)
+        return pred_score
+
 
     def get_prediction_history(self):
         return self.prediction_history
@@ -295,16 +365,22 @@ class Population:
     def get_networks(self):
         return self.networks
 
-    def update_networks(self, input, answer):
+
+    def list_update_networks(self, input, answer):
         for network in self.networks:
-            network.update(input)
+            network.spike_list_update(input)
             network.store_output()
             network.reset()
-        for network in self.networks:
             network.get_prediction(answer)
 
     def set_best_network(self):
         prediction_scores = [network.get_prediction_history()[-1][0] for network in self.networks]
+        return self.networks[prediction_scores.index(max(prediction_scores))]
+
+
+    def reset_networks(self):
+        for network in self.networks:
+            network.reset()
 
 
         # self.best_network = self.networks[0]
