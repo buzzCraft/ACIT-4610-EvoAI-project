@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import random
 class Neuron():
 
     def __init__(self, id, threshold=0.6, weight = [1,1], leakage=0.5, spike_train_length=100):
@@ -37,6 +38,36 @@ class Neuron():
         self.spike_train = np.zeros(len(self.spike_train))
         self.potential = 0
 
+    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+        # Mutate the neuron
+        if np.random.rand() < mutation_rate:
+            self.__mutate_weight(weight_mutation_rate)
+        if np.radom.rand() < mutation_rate:
+            self.__mutate_threshold(threshold_mutation_rate)
+        if np.random.rand() < mutation_rate:
+            self.__mutate_leakage(leakage_mutation_rate)
+
+
+    def __mutate_weight(self, mutation_rate):
+        # Mutate the weight array
+        for i in range(len(self.weight)):
+            if np.random.rand() < mutation_rate:
+                self.weight[i] += np.random.uniform(-.5, .5)
+    def __mutate_threshold(self, mutation_rate):
+        # Mutate the threshold
+        if np.random.rand() < mutation_rate:
+            self.threshold += np.random.uniform(-.5, .5)
+
+    def __mutate_leakage(self, mutation_rate):
+        # Mutate the leakage
+        if np.random.rand() < mutation_rate:
+            self.leakage += np.random.uniform(-.05, .05)
+
+    def return_genome(self):
+        # Return the genome of the neuron
+        return [self.weight, self.threshold, self.leakage]
+
+
 class Layer:
     def __init__(self, neurons=[], spike_train_length=100):
         self.neurons = neurons
@@ -71,12 +102,25 @@ class Layer:
     def get_number_of_neurons(self):
         return len(self.neurons)
 
+    def get_genome(self):
+        genome = []
+        for neuron in self.neurons:
+            genome.append(neuron.return_genome())
+        return genome
+
+
+    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+        for neuron in self.neurons:
+            neuron.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
+
 class Network:
     def __init__(self, layers=[], nr_outputs=10, spike_train_length=100):
         self.layers = layers
         # Create a empty array for the output
         self.layers = []
         self.output = np.zeros((nr_outputs, spike_train_length))
+        self.prediction_history = []
+        self.genome = []
 
     def add_layer(self, layer):
         # Add a layer to the network
@@ -105,8 +149,108 @@ class Network:
     def get_output(self):
         return self.output
 
+    def mutate_network(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+        for layer in self.layers:
+            layer.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
+
+    def get_genome(self):
+        for layer in self.layers:
+            self.genome.append(layer.get_genome())
+        return self.genome
+
+    def get_prediction(self, answer):
+        """
+        Get the prediction of the network
+        And save it to self.prediction_history
+        :param answer: The correct answer
+        :return: The prediction
+        """
+        # Get the prediction of the network
+        output = self.get_output()
+        prediction = [sum(neuron) for neuron in output]
+        if sum(prediction) == 0:
+            return 0.0
+        else:
+            predicted = prediction.index(max(prediction))
+            return self.__get_prediction_score(predicted, answer)
+
+    def __get_prediction_score(self, predicted, answer):
+        """
+        Get the score of the prediction
+        and save it in self.prediction_history
+        :param predicted: The predicted answer
+        :param answer: The correct answer
+        :return: The score of the prediction
+        """
+        # Get the prediction score of the network
+        prediction = self.get_prediction()
+        pred_score = prediction[answer] / sum(prediction)
+        self.prediction_history.append([pred_score, answer])
+        return pred_score
+
+    def get_prediction_score(self):
+        """
+        Get the average score of the prediction
+        """
+        return sum([x[0] for x in self.prediction_history])
+
+class Population():
+    def __init__(self, size=100, nr_outputs=10, spike_train_length=100):
+        """
+        Create a population of networks
+        :param size: The size of the population
+        :param nr_outputs: The number of outputs of the network
+        :param spike_train_length: The length of the spike train
+        """
+        self.size = size
+        self.nr_outputs = nr_outputs
+        self.spike_train_length = spike_train_length
+        self.networks = []
+        self.genomes = []
+        self.fitness = []
+        self.best_network = None
+        self.best_score = 0.0
+        self.best_genome = None
+
+    def create_population(self, input_size=784, nr_neurons=100, nr_layers=2):
+        """
+        Create a population of networks
+        :param input_size: The size of the input
+        :param nr_neurons: The number of neurons in each layer
+        :param nr_layers: The number of layers in the network
+        """
+        # Create a population of networks
+        for i in range(self.size):
+            self.networks.append(self.__create_network(input_size, nr_neurons, nr_layers))
+
+    def __create_network(self, input_size, nr_neurons, nr_layers):
 
 
+    def update_population(self, input):
+        # Update the population
+        for network in self.networks:
+            network.network_update(input)
+
+    def reset_population(self):
+        # Reset the population
+        for network in self.networks:
+            network.reset()
+
+    def get_population_output(self):
+        # Get the output of the population
+        output = []
+        for network in self.networks:
+            output.append(network.get_output())
+        return output
+
+    def get_population_prediction(self, answer):
+        """
+        Get the prediction of the population
+        :param answer: The correct answer
+        :return: The prediction
+        """
+        for network in self.networks:
+            network.get_prediction(answer)
 
 if __name__ == '__main__':
 

@@ -268,11 +268,7 @@ def evolve3(spike_train_length, network_list):
             end = time.time()
             delta = end - start
             print("took %.2f seconds to process" % delta)
-            # for net in network_list:
-            #     # Finding prediction score for each network
-            #
-            #     plot_spike_train(net.get_output(), f'Spike train for the number: {train_y[p]}, epoch: {ep}')
-            # x = input("Press Enter to continue...")
+
 
 def init2(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_of_networks = 1, train_length = 10):
     network_list = []
@@ -327,12 +323,12 @@ if __name__ == '__main__':
     # Nr_input neurons -> number of pixels in an image
     # pop = init(nr_input=nr_pix, nr_output=10, nr_hidden=10, number_of_networks=20, train_length=spike_train_length)
     # evolve3(spike_train_length)
-    initialize(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05)
-    evolve2()
+    # initialize(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05)
+    # evolve2()
 
     # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
-    # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=1, leakage=0.05, train_length=spike_train_length)
-    # evolve3(spike_train_length,n)
+    n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
+    evolve3(spike_train_length,n)
 
 
 
