@@ -10,6 +10,7 @@ class Neuron():
         self.spike_train = np.zeros(spike_train_length)
         self.weight = np.array(weight)
         self.potential = 0
+        self.fired = False
 
     def _update(self, input, step):
         self.potential += input - self.leakage*self.potential
@@ -42,7 +43,7 @@ class Neuron():
         # Mutate the neuron
         if np.random.rand() < mutation_rate:
             self.__mutate_weight(weight_mutation_rate)
-        if np.radom.rand() < mutation_rate:
+        if np.random.rand() < mutation_rate:
             self.__mutate_threshold(threshold_mutation_rate)
         if np.random.rand() < mutation_rate:
             self.__mutate_leakage(leakage_mutation_rate)
@@ -66,6 +67,12 @@ class Neuron():
     def return_genome(self):
         # Return the genome of the neuron
         return [self.weight, self.threshold, self.leakage]
+
+    def set_genome(self, genome):
+        # Set the genome of the neuron
+        self.weight = genome[0]
+        self.threshold = genome[1]
+        self.leakage = genome[2]
 
 
 class Layer:
@@ -107,6 +114,10 @@ class Layer:
         for neuron in self.neurons:
             genome.append(neuron.return_genome())
         return genome
+
+    def set_genome(self, genome):
+        for i in range(len(self.neurons)):
+            self.neurons[i].set_genome(genome[i])
 
 
     def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
@@ -153,7 +164,7 @@ class Network:
     def get_output(self):
         return self.output
 
-    def mutate_network(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+    def mutate_network(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.1, leakage_mutation_rate=0.1):
         for layer in self.layers:
             layer.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
 
@@ -173,30 +184,19 @@ class Network:
         output = self.get_output()
         prediction = [sum(neuron) for neuron in output]
         if sum(prediction) == 0:
+            self.prediction_history.append([0,answer])
             return 0.0
         else:
-            predicted = prediction.index(max(prediction))
-            return self.__get_prediction_score(predicted, answer)
 
-    def __get_prediction_score(self, predicted, answer):
-        """
-        Get the score of the prediction
-        and save it in self.prediction_history
-        :param predicted: The predicted answer
-        :param answer: The correct answer
-        :return: The score of the prediction
-        """
-        # Get the prediction score of the network
-        prediction = self.get_prediction()
-        pred_score = prediction[answer] / sum(prediction)
-        self.prediction_history.append([pred_score, answer])
-        return pred_score
+            pred_score = prediction[answer] / sum(prediction)
+            self.prediction_history.append([pred_score, answer])
+            return pred_score
 
-    def get_prediction_score(self):
+    def get_prediction_score(self, batch_size):
         """
         Get the average score of the prediction
         """
-        return sum([x[0] for x in self.prediction_history])
+        return sum([x[0] for x in self.prediction_history[-batch_size:]])
 
     def get_genome(self):
         genome = []
@@ -204,8 +204,14 @@ class Network:
             genome.append(layer.get_genome())
         return genome
 
+    def set_genome(self, genome):
+        for i in range(len(self.layers)):
+            self.layers[i].set_genome(genome[i])
+
     def __str__(self):
-        return f'Network {self.id} with {len(self.layers)} layers'
+        return f'Network {self.id} with {len(self.layers)} layers' \
+               f'\nwith a prediction score of {self.get_prediction_score(-5)}' \
+
 
 # class Population():
 #     def __init__(self,nr_inputs=100, nr_hidden=[20], nr_outputs=10, size=100, spike_train_length=100, leakage=0.1, threshold=0.5):

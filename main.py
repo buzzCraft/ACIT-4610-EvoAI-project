@@ -263,7 +263,7 @@ def evolve3(spike_train_length, network_list):
             # Genereating a spike train for image p
             spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T=spike_train_length)
 
-            print("took %.2f seconds to process" % delta)
+            # print("took %.2f seconds to process" % delta)
             # Update the networks with the spike train
             for net in network_list:
                 net.network_update(spikeTrain)
@@ -324,11 +324,11 @@ def init_n(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number
     return pop
     # print(pop)
 
-def pop_eve(spike_train_length, population):
+def pop_eve(spike_train_length, population, batch_size=10):
     for ep in range(100):
         print(f'Epoch {ep}')
         # Images to train on
-        for p in range(10):
+        for p in range(batch_size):
             print(f'Image {p}')
             # Reset spike train history for all networks
             population.reset_population()
@@ -341,10 +341,15 @@ def pop_eve(spike_train_length, population):
 
 
             # Update the networks with the spike train
-            population.update_population(spikeTrain)
+            population.update_population(spikeTrain, train_y[p])
             end = time.time()
             delta = end - start
             print("took %.2f seconds to process" % delta)
+
+        # Select the best networks
+        population.evolve_population()
+        population.plot_best_network(train_y[p],ep)
+        print(population)
 
 
 if __name__ == '__main__':
@@ -363,8 +368,10 @@ if __name__ == '__main__':
     # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
     # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
     # evolve3(spike_train_length,n)
-    p = init_n(nr_pix, [20], 10, 5, 0.05, 20, spike_train_length)
-    pop_eve(spike_train_length, p)
+    pop = population.Population(nr_inputs=nr_pix, nr_hidden = [20], nr_outputs=10, size = 20, spike_train_length=spike_train_length,batch_size = 5, leakage = 0.05, threshold=0.5)
+    pop.create_population()
+    pop.mutation_rate = 0.8
+    pop_eve(spike_train_length, pop,5)
 
 
 

@@ -52,3 +52,14 @@ a = np.zeros((n,t))
 # print(a)
 
 print(np.ones(10))
+import random
+liste = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
+random.shuffle(liste)
+def getSublists(lst,n):
+    subListLength = len(lst) // n
+    for i in range(0, len(lst), subListLength):
+        yield lst[i:i+subListLength]
+
+x = list(getSublists(liste, 4))
+print(x)
+# print(list(getSublists(liste,3)))
