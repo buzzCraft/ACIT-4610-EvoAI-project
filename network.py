@@ -253,20 +253,7 @@ class Network():
         pred_score=prediction[answer]/sum(prediction)
         self.store_prediction_score(pred_score, answer)
         return pred_score
-    def get_prediction_2(self, answer):
-        """
-        :return: the prediction of the network
-        Get the output from the network
-        Sum the number of spikes for each output neuron
-        Return the index of the neuron with the highest sum
-        """
-        output = self.get_output()
-        prediction = [sum(o) for o in output]
-        if sum(prediction)==0:
-            return 0.0
-        pred_score=prediction[answer]/sum(prediction)
-        self.store_prediction_score(pred_score, answer)
-        return pred_score
+
 
 
     def get_prediction_history(self):
@@ -346,46 +333,3 @@ class Network():
         # Save the network to a file
         pass
 
-class Population:
-    def __init__(self):
-        self.networks = []
-        self.generation = 0
-        self.best_network = None
-        self.best_score = 0
-        self.best_networks = []
-        self.best_scores = []
-        self.avg_scores = []
-        self.avg_score = 0
-        self.avg_score_history = []
-        self.best_score_history = []
-
-    def add_network(self, network):
-        self.networks.append(network)
-
-    def get_networks(self):
-        return self.networks
-
-
-    def list_update_networks(self, input, answer):
-        for network in self.networks:
-            network.spike_list_update(input)
-            network.store_output()
-            network.reset()
-            network.get_prediction(answer)
-
-    def set_best_network(self):
-        prediction_scores = [network.get_prediction_history()[-1][0] for network in self.networks]
-        return self.networks[prediction_scores.index(max(prediction_scores))]
-
-
-    def reset_networks(self):
-        for network in self.networks:
-            network.reset()
-
-
-        # self.best_network = self.networks[0]
-        # self.best_score = self.best_network.get_prediction_history()[-1][0]
-        # for network in self.networks:
-        #     if network.get_prediction_score() > self.best_score:
-        #         self.best_score = network.get_prediction_history()[-1][0]
-        #         self.best_network = network

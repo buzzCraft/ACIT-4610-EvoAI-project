@@ -262,12 +262,13 @@ def evolve3(spike_train_length, network_list):
             start = time.time()
             # Genereating a spike train for image p
             spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T=spike_train_length)
+
+            print("took %.2f seconds to process" % delta)
             # Update the networks with the spike train
             for net in network_list:
                 net.network_update(spikeTrain)
             end = time.time()
             delta = end - start
-            print("took %.2f seconds to process" % delta)
 
 
 def init2(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_of_networks = 1, train_length = 10):
@@ -313,6 +314,39 @@ def init2(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_
     return network_list
 
 
+#### NEW START THINGY ####
+# Create the population
+import population
+
+def init_n(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_of_networks = 1, train_length = 10):
+    pop = population.Population(nr_inputs=nr_input, nr_hidden=nr_hidden, nr_outputs=nr_output, threshold=threshold, leakage=leakage, size=number_of_networks, spike_train_length=train_length)
+    pop.create_population()
+    return pop
+    # print(pop)
+
+def pop_eve(spike_train_length, population):
+    for ep in range(100):
+        print(f'Epoch {ep}')
+        # Images to train on
+        for p in range(10):
+            print(f'Image {p}')
+            # Reset spike train history for all networks
+            population.reset_population()
+
+            start = time.time()
+            # TODO Generate all spike trains at once and store them in a text file
+            # Then read it in when needed
+            # Genereating a spike train for image p
+            spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T=spike_train_length)
+
+
+            # Update the networks with the spike train
+            population.update_population(spikeTrain)
+            end = time.time()
+            delta = end - start
+            print("took %.2f seconds to process" % delta)
+
+
 if __name__ == '__main__':
     import time
 
@@ -327,8 +361,10 @@ if __name__ == '__main__':
     # evolve2()
 
     # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
-    n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
-    evolve3(spike_train_length,n)
+    # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
+    # evolve3(spike_train_length,n)
+    p = init_n(nr_pix, [20], 10, 5, 0.05, 20, spike_train_length)
+    pop_eve(spike_train_length, p)
 
 
 
