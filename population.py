@@ -1,7 +1,7 @@
 from net_classes import *
 import random
 from matplotlib import pyplot as plt
-import copy
+from numba import jit, cuda
 class Population():
     def __init__(self,nr_inputs, nr_hidden, nr_outputs, size, spike_train_length, batch_size, leakage=0.1, threshold=0.5, tournament_size=2):
         """
@@ -73,11 +73,28 @@ class Population():
         output_layer.update_output_array()
         return Network(id = network_id, layers=[input_layer] + hidden_layers + [output_layer])
 
+
     def update_population(self, input, answer):
         # Update the population
         for network in self.networks:
             network.network_update(input)
             network.get_prediction(answer)
+
+    # No improvement in time consumption
+    # def update_population(self, input, answer):
+    #     # Update the population
+    #     t_list = []
+    #     for network in self.networks:
+    #         t = threading.Thread(target=network.network_update, args=(input,))
+    #         t_list.append(t)
+    #     for t in t_list:
+    #         t.start()
+    #     for t in t_list:
+    #         t.join()
+    #     for network in self.networks:
+    #         network.get_prediction(answer)
+            # network.network_update(input)
+            # network.get_prediction(answer)
 
     def reset_population(self):
         # Reset the spike train history of the population

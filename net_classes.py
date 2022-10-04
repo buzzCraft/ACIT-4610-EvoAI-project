@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import random
+from numba import jit
 class Neuron():
 
     def __init__(self, id, threshold=0.6, weight = [1,1], leakage=0.5, spike_train_length=100):
@@ -23,6 +24,7 @@ class Neuron():
             self.spike_train[step] = 0
             self.fired = False
 
+    # @jit(forceobj=True)
     def neuron_update(self, input):
         # Take the input array, multiply it with the weight array and sum the result
         #TODO A BUG HERE!!!!!!!!! ( MAYBE FIXED)
