@@ -224,6 +224,9 @@ class Population():
             plt.show()
         pass
 
+    def get_best_network(self):
+        return self.best_network
+
     def __str__(self):
         # Print the population
         return f'Population size: {self.size}\n'

@@ -1,7 +1,7 @@
 import random
 from keras.datasets import mnist
 from matplotlib import pyplot as plt
-# from pylab import *
+import pickle
 import numpy as np
 import spikeGen
 import copy
@@ -334,7 +334,7 @@ def pop_eve(spike_train_length, population, batch_size=10):
             population.reset_population()
 
             start = time.time()
-            # TODO Generate all spike trains at once and store them in a text file
+            # TODO Generate all spike trains at once and store them in a text file ( not sure if needed )
             # Then read it in when needed
             # Genereating a spike train for image p
             spikeTrain = np.array(spikeGen.rateCodingRand2D(train_X[p], T=spike_train_length))
@@ -351,6 +351,28 @@ def pop_eve(spike_train_length, population, batch_size=10):
         population.plot_best_network(train_y[p],ep)
         # population.plot_all_networks(train_y[p],ep)
         # print(population)
+def save_network(network, filename="network.pkl"):
+    with open(filename, 'wb') as f:
+        pickle.dump(network, f)
+    """
+    Implement a textfile to go along with the pickle file
+    Store the following information:
+    - Number of inputs
+    - Number of hidden neurons
+    - Number of outputs
+    - Best score
+    - Number of epochs trained
+    - Date / time
+    """
+
+
+
+def load_network(filename="network.pkl"):
+    """
+    Usage: network = load_network('network.pkl')
+    """
+    with open(filename, 'rb') as f:
+        return pickle.load(f)
 
 
 if __name__ == '__main__':
@@ -374,6 +396,8 @@ if __name__ == '__main__':
     pop.create_population()
     pop.mutation_rate = 0.8
     pop_eve(spike_train_length, pop,batch_size=batch_size)
+
+
 
 
 

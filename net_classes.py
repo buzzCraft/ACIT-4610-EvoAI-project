@@ -27,7 +27,7 @@ class Neuron():
     # @jit(forceobj=True)
     def neuron_update(self, input):
         # Take the input array, multiply it with the weight array and sum the result
-        #TODO A BUG HERE!!!!!!!!! ( MAYBE FIXED)
+        x = (input * self.weight[:, None])
         input_array = np.sum(input * self.weight[:, None], axis=0)
         # Send each timestep of the input array to the neuron
         # Save the output to spike_train
@@ -99,7 +99,7 @@ class Layer:
         i = 0
         for neuron in self.neurons:
             # Update neuron
-            #TODO First layer logic BUG HERE!!!!!!!!!
+
             if self.input_layer:
                 neuron.neuron_update(input[i])
             else:
