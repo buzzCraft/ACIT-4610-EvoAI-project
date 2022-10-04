@@ -3,7 +3,7 @@ import random
 from matplotlib import pyplot as plt
 import copy
 class Population():
-    def __init__(self,nr_inputs, nr_hidden, nr_outputs, size, spike_train_length, batch_size, leakage=0.1, threshold=0.5, tournament_size=5):
+    def __init__(self,nr_inputs, nr_hidden, nr_outputs, size, spike_train_length, batch_size, leakage=0.1, threshold=0.5, tournament_size=2):
         """
         Create a population of networks
         :param nr_inputs: Number of inputs neurons
@@ -29,6 +29,7 @@ class Population():
         self.fitness = []
         self.best_network = None
         self.best_score = 0.0
+        self.best_score_history = []
         self.best_genome = None
 
     def create_population(self):
@@ -46,6 +47,7 @@ class Population():
             # For each input neuron create a neuron
             input_layer.add_neuron(Neuron(id=i, threshold=self.threshold, weight=np.array([1]), leakage=self.leakage,spike_train_length=self.spike_train_length))
         # Update the size of the input layer
+        input_layer.input_layer=True
         input_layer.update_output_array()
         # Create a list to store hidden layers
         hidden_layers = []
@@ -53,9 +55,11 @@ class Population():
         for nr_of_neurons in self.nr_hidden:
             #
             h_l = (Layer(neurons=[], spike_train_length=self.spike_train_length))
+            h_l.input_layer=False
             # weight = np.random.uniform(-1, 1, self.nr_inputs)
-            weight_list = np.array([random.gauss(0, 1) for _ in range(self.nr_inputs)])
+
             for i in range(nr_of_neurons):
+                weight_list = np.array([random.gauss(0, 1) for _ in range(self.nr_inputs)])
                 h_l.add_neuron(
                     Neuron(id=i, threshold=self.threshold, weight=weight_list, leakage=self.leakage, spike_train_length=self.spike_train_length))
             hidden_layers.append(h_l)
@@ -88,31 +92,52 @@ class Population():
             output.append(network.get_output())
         return output
 
-    def get_population_prediction(self):
-        """
-        Get the prediction of the population
-        :param answer: The correct answer
-        :return: The prediction
-        """
+    # def get_population_prediction(self):
+    #     """
+    #     Get the prediction of the population
+    #     :param answer: The correct answer
+    #     :return: The prediction
+    #     """
+    #     predictions = []
+    #     for network in self.networks:
+    #         # p = network.get_prediction_score()
+    #         predictions.append(network.get_prediction_score(self.batch_size)/self.batch_size)
+    #     return predictions
+
+    def evolve_population(self):
+        #TODO MAYBE BUG HERE
         predictions = []
         for network in self.networks:
             # p = network.get_prediction_score()
-            predictions.append(network.get_prediction_score(self.batch_size)/self.batch_size)
-        return predictions
-
-    def evolve_population(self):
-        predictions = self.get_population_prediction()
+            predictions.append(network.get_prediction_score(self.batch_size) / self.batch_size)
         # Find index of best score in predictions list
 
         index_of_best = predictions.index(max(predictions))
         keeper = []
-        keeper.append(self.networks.pop(index_of_best))
-        print(keeper[0])
-        print("Best score: ", max(predictions))
-        keeper.extend(self.tournament_selection(self.tournament_size))
+        self.best_network = self.networks.pop(index_of_best)
+        keeper.append(self.best_network)
+
+        tournament_winners = self.tournament_selection(self.tournament_size)
+        for network in self.networks:
+            if network in tournament_winners:
+                self.networks.remove(network)
+
+        keeper.extend(tournament_winners)
         self.mutate_population(keeper)
         self.best_network= keeper[0]
+        self.best_score_history.append(self.best_score)
+        self.best_score = self.best_network.current_prediction_score
+        self.networks.extend(keeper)
+        print(f' From mutation we got the best {self.best_network} previouse best was {self.best_score_history[-1]}')
+        self.plot_prediction()
 
+    def plot_prediction(self):
+        plt.plot(self.best_score_history+[self.best_score])
+        plt.title("Prediction score over time")
+        plt.ylabel("Prediction score")
+        plt.xlabel("Epoch")
+        plt.show()
+        plt.show()
     def tournament_selection(self, nr_of_tournaments):
         """
         Tournament selection
@@ -127,7 +152,8 @@ class Population():
 
             to = []
             for network in pop:
-                to.append(network.get_prediction_score(self.batch_size))
+                to.append(network.current_prediction_score)
+            # to.append(pop.get_prediction_score(self.batch_size))
             survivors.append(pop[to.index(max(to))])
         return survivors
 
@@ -148,10 +174,10 @@ class Population():
         #     network.get_genome()
 
         for network in self.networks:
-            if network != pop:
-                network.set_genome(random.choice(pop).get_genome())
-                network.mutate_network(self.mutation_rate)
-        self.networks.extend(pop)
+            network.set_genome(random.choice(pop).get_genome())
+            network.mutate_network(self.mutation_rate)
+        # self.networks.extend(pop)
+        pass
 
 
 
@@ -166,6 +192,20 @@ class Population():
         plt.yticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
         # plt.legend()
         plt.show()
+
+    def plot_all_networks(self, image, ep):
+        for network in self.networks:
+            spike_train = network.get_output()
+            i = 0
+            for train in spike_train:
+                train = train + i
+                plt.plot(train, label='Neuron {}'.format(i))
+                i += 1
+            plt.title(f'Spike train for the number: {image}, epoch: {ep}')
+            plt.yticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+            # plt.legend()
+            plt.show()
+        pass
 
     def __str__(self):
         # Print the population

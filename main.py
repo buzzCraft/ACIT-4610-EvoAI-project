@@ -318,7 +318,7 @@ def init2(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_
 # Create the population
 import population
 
-def init_n(nr_input, nr_hidden, nr_output, threshold = 1, leakage = 0.01, number_of_networks = 1, train_length = 10):
+def init_n(nr_input, nr_hidden, nr_output, threshold = 1.0, leakage = 0.01, number_of_networks = 1, train_length = 10):
     pop = population.Population(nr_inputs=nr_input, nr_hidden=nr_hidden, nr_outputs=nr_output, threshold=threshold, leakage=leakage, size=number_of_networks, spike_train_length=train_length)
     pop.create_population()
     return pop
@@ -329,7 +329,7 @@ def pop_eve(spike_train_length, population, batch_size=10):
         print(f'Epoch {ep}')
         # Images to train on
         for p in range(batch_size):
-            print(f'Image {p}')
+            # print(f'Image {p}')
             # Reset spike train history for all networks
             population.reset_population()
 
@@ -337,19 +337,20 @@ def pop_eve(spike_train_length, population, batch_size=10):
             # TODO Generate all spike trains at once and store them in a text file
             # Then read it in when needed
             # Genereating a spike train for image p
-            spikeTrain = spikeGen.rateCodingRand2D(train_X[p], T=spike_train_length)
+            spikeTrain = np.array(spikeGen.rateCodingRand2D(train_X[p], T=spike_train_length))
 
 
             # Update the networks with the spike train
             population.update_population(spikeTrain, train_y[p])
             end = time.time()
             delta = end - start
-            print("took %.2f seconds to process" % delta)
+            print(f"Image {p} took {delta} seconds to process")
 
         # Select the best networks
         population.evolve_population()
         population.plot_best_network(train_y[p],ep)
-        print(population)
+        # population.plot_all_networks(train_y[p],ep)
+        # print(population)
 
 
 if __name__ == '__main__':
@@ -368,10 +369,11 @@ if __name__ == '__main__':
     # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
     # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
     # evolve3(spike_train_length,n)
-    pop = population.Population(nr_inputs=nr_pix, nr_hidden = [20], nr_outputs=10, size = 20, spike_train_length=spike_train_length,batch_size = 5, leakage = 0.05, threshold=0.5)
+    batch_size = 5
+    pop = population.Population(nr_inputs=nr_pix, nr_hidden = [20], nr_outputs=10, size = 20, spike_train_length=spike_train_length,batch_size = batch_size, leakage = 0.05, threshold=2)
     pop.create_population()
     pop.mutation_rate = 0.8
-    pop_eve(spike_train_length, pop,5)
+    pop_eve(spike_train_length, pop,batch_size=batch_size)
 
 
 
