@@ -3,6 +3,8 @@ import copy
 import time
 import random
 from numba import njit
+from sklearn.metrics import log_loss, f1_score
+from scipy.special import softmax
 class Neuron():
 
     def __init__(self, id, threshold=0.6, weight = [1], leakage=0.5, spike_train_length=100, bias = 0):
@@ -57,10 +59,10 @@ class Neuron():
         self.spike_train = np.zeros(len(self.spike_train))
         self.potential = 0
 
-    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.05, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
         # Mutate the neuron
         # if np.random.rand() < mutation_rate:
-        self.__mutate_weight(weight_mutation_rate)
+        self.__mutate_weight(mutation_rate)
         # if np.random.rand() < mutation_rate:
         #     self.__mutate_threshold(threshold_mutation_rate)
         # if np.random.rand() < mutation_rate:
@@ -69,12 +71,12 @@ class Neuron():
         #     self.bias += np.random.uniform(-1, 1)
 
 
-    def __mutate_weight(self, mutation_rate):
+    def __mutate_weight(self, mutation_rate, weight_mutation_rate=0.05):
         # Mutate the weight array
         for i in range(len(self.weight)):
-            if np.random.rand() < mutation_rate:
+            if np.random.rand() > mutation_rate:
                 # self.weight[i] = np.random.uniform(-5.0, 5.0)
-                self.weight[i] += np.random.normal(0, .2)
+                self.weight[i] += np.random.normal(0, weight_mutation_rate)
                 # self.weight[i] = self.weight[i] * (np.random.normal(-1.0, 1.0))
                 # weight * (1 + (random() * 0.2 - 0.1));
     def __mutate_threshold(self, mutation_rate):
@@ -157,7 +159,7 @@ class Layer:
             self.neurons[i].set_genome(genome[i])
 
 
-    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.05, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
         for neuron in self.neurons:
             neuron.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
 
@@ -182,6 +184,14 @@ class Network:
         self.accuracy_history = [0.0]
         self.batch_size = batch_size
         self.accuracy_counter = 0
+        # Cross entropy vars
+        self.batch_output = []
+        self.batch_target = []
+        self.f1_score = 0
+        self.current_f1_score = 0
+        self.predicted = 0
+        self.batch_prediction = []
+        self.current_log_loss = 0
 
     def add_layer(self, layer):
         # Add a layer to the network
@@ -207,18 +217,25 @@ class Network:
         # print(self.output)
 
     def reset(self):
+
         # Reset the network for a new input
         for layer in self.layers:
             layer.reset()
 
     def batch_reset(self):
         self.current_accuracy = 0
+        self.batch_target = []
+        self.batch_output = []
+        self.batch_prediction = []
+        self.accuracy_counter = 0
+        self.current_f1_score = 0
+        self.confusion_predicted = []
 
 
     def get_output(self):
         return self.output
 
-    def mutate_network(self, mutation_rate=0.5, weight_mutation_rate=0.5, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
+    def mutate_network(self, mutation_rate=0.5, weight_mutation_rate=0.05, threshold_mutation_rate=0.5, leakage_mutation_rate=0.5):
         for layer in self.layers:
             layer.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
 
@@ -237,15 +254,24 @@ class Network:
         # Get the prediction of the network
         output = self.get_output()
         prediction = [sum(neuron) for neuron in output]
+        self.batch_output.append(prediction)
+        self.batch_target.append(answer)
         # Get the accuracy of the prediction
-
+        if prediction.count(max(prediction)) == 1:
+            self.predicted = prediction.index(max(prediction))
+        else:
+            self.predicted = -1
+        self.confusion_predicted.append(prediction.index(max(prediction)))
+            # self.predicted = random.choice([i for i, x in enumerate(prediction) if x == max(prediction)])
+        self.batch_prediction.append(self.predicted)
         if prediction.index(max(prediction)) == answer:
             # If the answer is the only max value
             if prediction.count(max(prediction)) == 1:
                 self.accuracy_counter += 1
+
             # TODO in case of tie - first spike
-            # else:
-            #     self.accuracy_counter += 1 / prediction.count(max(prediction))
+            else:
+                self.accuracy_counter += 1 / prediction.count(max(prediction))
 
 
 
@@ -265,14 +291,37 @@ class Network:
     def get_acc_x_prediction(self):
         return self.current_accuracy + self.current_prediction_score
 
-    def get_prediction_score(self):
+    def calculate_prediction_score(self):
         """
         Get the average score of the prediction
         """
         self.current_prediction_score = sum([x[0] for x in self.prediction_history[-self.batch_size:]])/self.batch_size
         self.current_accuracy = self.accuracy_counter / self.batch_size
-
         self.accuracy_counter = 0
+        # self.log_loss = self.get_log_loss()
+        self.f1_score = self.get_f1_score()
+        self.log_loss = self.get_log_loss()
+
+    def get_log_loss(self):
+        soft = self.soft_max(self.batch_output)
+        # TODO convert self.batch_target to a array of 0 and index of the correct answer to 1
+        batch_answer = np.zeros((len(self.batch_target), 10))
+        for i in range(len(self.batch_target)):
+            batch_answer[i][self.batch_target[i]] = 1
+        self.current_log_loss = log_loss(batch_answer, soft)
+        return self.current_log_loss
+
+    def soft_max(self, array):
+        return softmax(array, axis=1)
+
+    def get_f1_score(self):
+
+        preds = self.batch_prediction
+        # Good pred with 'macro' and 'weighted' average, should probably not use 'micro'
+        self.current_f1_score = f1_score(self.batch_target, preds, average='weighted')
+        return self.current_f1_score
+    def get_prediction_score(self):
+
 
         return self.current_prediction_score, self.current_accuracy
         # return sum([x[0] for x in self.prediction_history[-batch_size:]])
@@ -289,7 +338,14 @@ class Network:
 
     def __str__(self):
         return f'Network {self.id} ' \
-               f'\nwith a prediction score of {self.current_prediction_score}' \
+               f'\n with a acc score of {self.current_accuracy}' \
+            f'Accuracy counter: {self.accuracy_counter}, batch size: {self.batch_size}' \
+
+
+    def __gt__(self, other):
+        # return self.current_accuracy < other.current_accuracy
+        return self.f1_score > other.f1_score
+        # return self.log_loss > other.log_loss
 
 
 

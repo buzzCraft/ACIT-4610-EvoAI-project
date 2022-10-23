@@ -1,7 +1,11 @@
 from net_classes import *
 import random
 from matplotlib import pyplot as plt
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import pandas as pd
 from numba import jit, cuda
+from sklearn.metrics import log_loss
 class Population():
     def __init__(self,nr_inputs, nr_hidden, nr_outputs, size, spike_train_length, batch_size, leakage=0.1, threshold=0.5, tournament_size=2):
         """
@@ -24,6 +28,8 @@ class Population():
         self.batch_size = batch_size
         self.tournament_size = tournament_size
         self.mutation_rate = 0.3
+        self.weight_mutate_rate = 0.1
+        self.weight_mutate_rate_init = self.weight_mutate_rate
         ####
         self.genomes = []
         self.fitness = []
@@ -33,6 +39,8 @@ class Population():
         self.best_score_history = []
         self.best_acc_history = []
         self.best_genome = None
+        self.f1_score_history = []
+        self.log_loss_history = []
 
     def create_population(self):
         """
@@ -49,6 +57,8 @@ class Population():
 
     def __create_network(self, network_id):
         # Creating input layer
+        # TODO The input layer can be the same for each networks since the weights are stored
+        # in the hidden layer
         input_layer = Layer(neurons=[],spike_train_length=self.spike_train_length)
         for i in range(self.nr_inputs):
             # For each input neuron create a neuron
@@ -100,6 +110,10 @@ class Population():
         for network in self.networks:
             network.reset()
 
+    def batch_reset(self):
+        for network in self.networks:
+            network.batch_reset()
+
     def get_population_output(self):
         # Get the output of the population
         output = []
@@ -118,62 +132,87 @@ class Population():
     #         # p = network.get_prediction_score()
     #         predictions.append(network.get_prediction_score(self.batch_size)/self.batch_size)
     #     return predictions
-
     def evolve_population(self):
-        #TODO MAYBE BUG HERE
-        predictions = [] # List for storing predictions
-        accuracy = [] # List for storing accuracys
-        keeper = [] # List for storing survivors
+
+        # Get the fitness of the population
         for network in self.networks:
-            # Get predictions and accuracys
-            prd, acc = network.get_prediction_score()
-            predictions.append(prd)
-            accuracy.append(acc)
-
-        # Find index of best score in predictions list
-
-        prd_inx = predictions.index(max(predictions))
-        acc_inx = accuracy.index(max(accuracy))
-
-        # If network with higiest predscore is not the same as the one with highest accuarcy
-        # Keep both, if not, only copy it once
-        if prd_inx != acc_inx:
-            self.best_network = self.networks[prd_inx]
-            self.best_acc_network = self.networks[acc_inx]
-            # keeper.extend([self.best_network, self.best_acc_network])
-            # self.networks.remove(self.best_network)
-            # self.networks.remove(self.best_acc_network)
-        else:
-            self.best_network = self.networks[prd_inx]
-            self.best_acc_network = self.best_network
-            # keeper.append(self.best_network)
-            # self.networks.remove(self.best_network)
+            network.calculate_prediction_score()
+        # Sort the networks by their prediction score
+        self.networks.sort(reverse=True)
+        # self.networks = sorted(self.networks, key=lambda x: x.current_log_loss, reverse=False)
+        # Get the best network and append score for plotting
+        self.best_acc_network = self.networks[0]
+        self.best_score = self.best_acc_network.current_prediction_score
         self.best_score_history.append(self.best_score)
         self.best_acc_history.append(self.best_acc_network.current_accuracy)
-        self.best_score = self.best_network.current_prediction_score
-        self.mutate_by_tournament(acc_inx)
-        # tournament_winners = self.tournament_selection(self.tournament_size)
-        # for network in tournament_winners:
-        #     keeper.append(network)
-        #     self.networks.remove(network)
-        #
-        #
-        # # keeper.extend(tournament_winners)
-        # self.mutate_population(keeper)
-        # # self.best_network= keeper[0]
-        # self.best_score_history.append(self.best_score)
-        # self.best_acc_history.append(self.best_acc_network.current_accuracy)
-        # self.best_score = self.best_network.current_prediction_score
-        # self.networks.extend(keeper)
-        # # print(f' From mutation we got the best {self.best_network} previouse best was {self.best_score_history[-1]}')
-        # # self.plot_prediction()
+        self.f1_score_history.append(self.best_acc_network.current_f1_score)
+        self.log_loss_history.append(self.best_acc_network.get_log_loss())
+        newlist = sorted(self.networks, key=lambda x: x.current_log_loss, reverse=False)
+        # Get the best networks
+        # TODO Legg til en sannsynlighet for å velge de beste
+
+        best_networks = copy.deepcopy(self.networks[:3])
+        best_networks.extend(copy.deepcopy(newlist[:3]))
+        # Pick n random networks from self.networks
+        best_networks.extend(copy.deepcopy(random.sample(self.networks[3:], 2)))
+
+        for network in best_networks:
+            print(network.get_f1_score())
+
+
+        for i in range(int(len(self.networks)/2)):
+            net1 = random.choice(best_networks)
+            net2 = random.choice(best_networks)
+            if random.uniform(0, 1) > 0.2:
+                net3 = random.choice(best_networks)
+                net4 = random.choice(best_networks)
+                # Get the best of net1 and net2
+                if net1.f1_score < net2.f1_score:
+                    net1 = net2
+                # Get the best of net3 and net4
+                if net3.current_log_loss < net4.current_log_loss:
+                    net2 = net3
+                else:
+                    net2 = net4
+
+                # Do crossover on net1 and net2
+                net1, net2 = self.crossover(net1.get_genome(), net2.get_genome())
+                self.networks[i].set_genome(net1)
+                self.networks[-i].set_genome(net2)
+
+        # Force evolution when network is stuck
+        if len(self.best_score_history) > 5:
+            # If stuck, add 0.1 to mutation rate
+            if self.best_score == self.best_score_history[-2]:
+                self.weight_mutate_rate += np.random.normal(0, 0.2)
+            # If we got an improvement, go back to original mutation rate
+            else:
+                self.weight_mutate_rate = self.weight_mutate_rate_init
+
+        for net in self.networks:
+            # if random.uniform(0, 1) < 0.5:
+            net.mutate_network(self.mutation_rate, self.weight_mutate_rate)
+        self.networks.remove(random.choice(self.networks))
+        self.networks.append(best_networks[0])
+        print(best_networks[0])
+
+
+
+
 
     def plot_prediction(self):
-        plt.plot(self.best_score_history+[self.best_score])
-        plt.plot([0]+self.best_acc_history)
-        plt.title("Prediction score over time")
-        plt.ylabel("Prediction score")
-        plt.xlabel("Epoch")
+        fig, (ax1, ax2) = plt.subplots(2)
+        fig.suptitle('Prediction score and accuracy')
+        ax1.plot(self.best_score_history)
+        ax1.plot(self.best_acc_history)
+        ax1.plot(self.f1_score_history)
+        ax2.plot(self.log_loss_history)
+        # ax1.title("Prediction score and accuracy")
+        # ax2.title("Log loss")
+        # ax1.ylabel("Prediction score")
+        # ax1.xlabel("Epoch")
+        # ax2.ylabel("Log Loss")
+        # ax2.xlabel("Epoch")
         plt.show()
 
     def tournament_selection(self, nr_of_tournaments):
@@ -219,40 +258,43 @@ class Population():
         # self.networks.extend(pop)
         pass
 
-    def mutate_by_tournament(self, best_acc):
-        # best_genome = best_acc.get_genome()
-        population = copy.deepcopy(self.networks)
-        best_acc_n = self.networks.pop(best_acc)
-        for i in range(len(self.networks)):
-            net1 = random.choice(population)
-            net2 = random.choice(population)
-            if random.uniform(0, 1) > 0.2:
-                net3 = random.choice(population)
-                net4 = random.choice(population)
-                if net1.current_accuracy > net2.current_accuracy:
-                    if net3.current_accuracy > net4.current_accuracy:
-                        self.networks[i].set_genome(self.crossover(net1.get_genome(), net3.get_genome()))
-                    else:
-                        self.networks[i].set_genome(self.crossover(net1.get_genome(), net4.get_genome()))
-                else:
-                    if net3.current_accuracy > net4.current_accuracy:
-                        self.networks[i].set_genome(self.crossover(net2.get_genome(), net3.get_genome()))
-                    else:
-                        self.networks[i].set_genome(self.crossover(net2.get_genome(), net4.get_genome()))
-
-
-            if net1.current_accuracy > net2.current_accuracy:
-                g = net1.get_genome()
-                self.genome_mutate(g, self.networks[i])
-                # self.networks[i].set_genome(g)
-                # self.networks[i].mutate_network(self.mutation_rate)
-            else:
-                g = net2.get_genome()
-                self.genome_mutate(g, self.networks[i])
-                # self.networks[i].set_genome(g)
-                # self.networks[i].mutate_network(self.mutation_rate)
-        self.networks.append(best_acc_n)
-
+    # def mutate_by_tournament(self, best_acc):
+    #     # best_genome = best_acc.get_genome()
+    #     population = copy.deepcopy(self.networks)
+    #     _ = self.networks.pop(best_acc)
+    #     best_acc_n = population.pop(best_acc)
+    #     for i in range(int(len(self.networks)/2)):
+    #         net1 = random.choice(population)
+    #         net2 = random.choice(population)
+    #         if random.uniform(0, 1) > 0.2:
+    #             net3 = random.choice(population)
+    #             net4 = random.choice(population)
+    #             # Get the best of net1 and net2
+    #             if net1.current_accuracy > net2.current_accuracy:
+    #                 net1 = net1
+    #             else:
+    #                 net1 = net2
+    #             # Get the best of net3 and net4
+    #             if net3.current_accuracy > net4.current_accuracy:
+    #                 net2 = net3
+    #             else:
+    #                 net2 = net4
+    #
+    #             # Do crossover on net1 and net2
+    #             net1, net2 = self.crossover(net1.get_genome(), net2.get_genome())
+    #             self.networks[i].set_genome(net1)
+    #             self.networks[-i].set_genome(net2)
+    #
+    #
+    #
+    #     for net in self.networks:
+    #         if random.uniform(0, 1) < 0.8:
+    #             net.mutate_network(self.mutation_rate)
+    #     self.networks.append(self.best_acc_network)
+    def new_mutate(self):
+        self.networks.sort()
+        for net in self.networks:
+            print(net)
     def genome_mutate(self, genome, network):
         """
         Mutate the genome
@@ -269,21 +311,17 @@ class Population():
         :param genome2: The second genome
         :return: The crossovered genome
         """
-        for i in range(len(genome1)):
-
+        # for i in range(len(genome1)):
+        for i in range(1,2):
             for u in range(len(genome1[i])):
                 for x in range(len(genome1[i][u])):
                     if type(genome1[i][u][x]) == np.ndarray:
                         for y in range(len(genome1[i][u][x])):
                             if random.uniform(0, 1) > 0.5:
+                                tmp = genome1[i][u][x][y]
                                 genome1[i][u][x][y] = genome2[i][u][x][y]
-
-
-
-
-
-
-        return genome1
+                                genome2[i][u][x][y] = tmp
+        return genome1, genome2
 
 
     def plot_best_network(self, image, ep):
@@ -297,6 +335,21 @@ class Population():
         plt.yticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
         # plt.legend()
         plt.show()
+        self.plot_confusion_matrix()
+
+    def plot_confusion_matrix(self):
+
+        cm = confusion_matrix(self.best_acc_network.batch_target, self.best_acc_network.confusion_predicted)
+        vmin = np.min(cm)
+        vmax = np.max(cm)
+        off_diag_mask = np.eye(*cm.shape, dtype=bool)
+
+        fig = plt.figure()
+        sns.heatmap(cm, annot=True, mask=~off_diag_mask, cmap='Blues', vmin=vmin, vmax=vmax)
+        sns.heatmap(cm, annot=True, mask=off_diag_mask,vmin=vmin, vmax=vmax, cmap='Reds', cbar=False,
+                    cbar_kws=dict(ticks=[]))
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
 
     def plot_all_networks(self, image, ep):
         for network in self.networks:

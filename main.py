@@ -6,6 +6,9 @@ import population
 import numpy as np
 from tqdm import tqdm
 import random
+
+
+
 # Image set
 (train_X, train_y), (test_X, test_y) = mnist.load_data()
 
@@ -24,6 +27,7 @@ def pop_eve(spike_train_length, population, batch_size=10, resize = 0, ran = Fal
     population.set_batch_size(batch_size)
     for ep in tqdm(range(10)):
         print(f'\nEpoch {ep}')
+        population.batch_reset()
 
 
         # Images to train on
@@ -109,9 +113,9 @@ if __name__ == '__main__':
     # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
     # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
     # evolve3(spike_train_length,n)
-    batch_size = 10
-    pop = population.Population(nr_inputs=nr_pix, nr_hidden=[20], nr_outputs=10, size=1000,
-                                spike_train_length=spike_train_length, batch_size=batch_size, leakage=0.1, threshold=0.5, tournament_size=10)
+    batch_size = 25
+    pop = population.Population(nr_inputs=nr_pix, nr_hidden=[20], nr_outputs=10, size=25,
+                                spike_train_length=spike_train_length, batch_size=batch_size, leakage=0.1, threshold=1.2, tournament_size=5)
     pop.create_population()
     # pop.mutation_rate = 0.5
     # pop_eve(spike_train_length, pop, batch_size=batch_size, resize=resize, ran = True)
@@ -123,13 +127,14 @@ if __name__ == '__main__':
     # # pop.mutation_rate = 0.5
     # # pop_eve(spike_train_length, pop, batch_size=batch_size, resize=resize, ran = True)
     # save_network(pop, filename="network_s_l_100_batch_100_ep_10_resized_2", batch_size=batch_size, spike_train_length=spike_train_length)
-    # loaded_pop = load_network(filename="network_s_batch_100_ep_10_resized_2.plk")
+    # loaded_pop = load_network(filename="network_s_batch_100_ep_10_resized_4_9.plk")
+    pop.weight_mutate_rate=0.05
     loaded_pop = pop
     for _ in range(10):
         # loaded_pop = load_network(filename="network_s_l_100_batch_100_ep_10_resized_2.plk")
-        loaded_pop.mutation_rate = 0.2
-        pop_eve(spike_train_length, loaded_pop, batch_size=batch_size, resize=resize, ran = True)
-        save_network(loaded_pop, filename=f"network_s_batch_100_ep_10_resized_3_{_}", batch_size=batch_size,
+        loaded_pop.mutation_rate = 0.1
+        pop_eve(spike_train_length, loaded_pop, batch_size=batch_size, resize=resize, ran = False)
+        save_network(loaded_pop, filename=f"network_s_batch_100_ep_10_resized_5_{_}", batch_size=batch_size,
                      spike_train_length=spike_train_length)
 
 
