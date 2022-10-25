@@ -114,8 +114,8 @@ if __name__ == '__main__':
     # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
     # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
     # evolve3(spike_train_length,n)
-    batch_size = 10
-    pop = population.Population(nr_inputs=nr_pix, nr_hidden=[20], nr_outputs=10, size=50,
+    batch_size = 400
+    pop = population.Population(nr_inputs=nr_pix, nr_hidden=[15], nr_outputs=10, size=10,
                                 spike_train_length=spike_train_length, batch_size=batch_size, leakage=0.1, threshold=1.2, tournament_size=5)
     pop.create_population()
     # pop.mutation_rate = 0.5
@@ -129,12 +129,12 @@ if __name__ == '__main__':
     # # pop_eve(spike_train_length, pop, batch_size=batch_size, resize=resize, ran = True)
     # save_network(pop, filename="network_s_l_100_batch_100_ep_10_resized_2", batch_size=batch_size, spike_train_length=spike_train_length)
     # loaded_pop = load_network(filename="network_s_batch_100_ep_10_resized_4_9.plk")
-    pop.weight_mutate_rate=1
+    pop.weight_mutate_rate=0.5
     loaded_pop = pop
     for _ in range(10):
         # loaded_pop = load_network(filename="network_s_l_100_batch_100_ep_10_resized_2.plk")
-        loaded_pop.mutation_rate = 0.02
-        pop_eve(spike_train_length, loaded_pop, batch_size=batch_size, resize=resize, ran = False)
+        loaded_pop.mutation_rate = 0.05
+        pop_eve(spike_train_length, loaded_pop, batch_size=batch_size, resize=resize, ran = True)
         save_network(loaded_pop, filename=f"network_s_batch_100_ep_10_resized_5_{_}", batch_size=batch_size,
                      spike_train_length=spike_train_length)
 

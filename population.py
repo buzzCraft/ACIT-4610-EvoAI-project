@@ -30,6 +30,7 @@ class Population():
         self.mutation_rate = 0.3
         self.weight_mutate_rate = 0.1
         self.weight_mutate_rate_init = self.weight_mutate_rate
+
         ####
         self.genomes = []
         self.fitness = []
@@ -174,29 +175,32 @@ class Population():
         # TODO Legg til en sannsynlighet for å velge de beste
 
         best_networks = copy.deepcopy(self.networks[:3])
-        newlist = sorted(self.networks[3:], key=lambda x: x.current_log_loss, reverse=False)
-        best_networks.extend(copy.deepcopy(newlist[0:3]))
+        # newlist = sorted(self.networks[3:], key=lambda x: x.current_log_loss, reverse=False)
+        # best_networks.extend(copy.deepcopy(newlist[0:3]))
         newlist = sorted(self.networks[3:], key=lambda x: x.current_accuracy, reverse=True)
-        best_networks.extend(copy.deepcopy(newlist[:1]))
+        best_networks.extend(copy.deepcopy(newlist[:3]))
         # Pick n random networks from self.networks
-        best_networks.extend(copy.deepcopy(random.sample(self.networks[3:], 3)))
+        # best_networks.extend(copy.deepcopy(random.sample(self.networks[3:], 3)))
 
         for network in best_networks:
             print(network.get_f1_score())
 
         if crossover:
+            net_copy = copy.deepcopy(self.networks)
             for i in range(int(len(self.networks)/2)):
 
                 if random.uniform(0, 1) > 0.2:
-                    net1 = random.choice(best_networks)
-                    net2 = random.choice(best_networks)
-                    net3 = random.choice(best_networks)
-                    net4 = random.choice(best_networks)
+
+
+                    net1 = random.choice(net_copy)
+                    net2 = random.choice(net_copy)
+                    net3 = random.choice(net_copy)
+                    net4 = random.choice(net_copy)
                     # Get the best of net1 and net2
                     if net1.current_f1_score < net2.current_f1_score:
                         net1 = net2
                     # Get the best of net3 and net4
-                    if net3.current_f1_score < net4.current_f1_score:
+                    if net3.current_accuracy < net4.current_accuracy:
                         net2 = net4
                     else:
                         net2 = net3
@@ -210,7 +214,16 @@ class Population():
             if len(self.best_score_history) > 5:
                 # If stuck, add 0.1 to mutation rate
                 if self.best_score == self.best_score_history[-2]:
+
                     self.weight_mutate_rate += np.random.normal(0, 0.2)
+                    # if self.best_score == self.best_score_history[-5]:
+                    #     # Remove 50% of the population
+                    #     self.networks = self.networks[:int(len(self.networks)/2)]
+                    #     # Add 50% new networks
+                    #     self.create_population(int(len(self.networks)/2))
+                    #     # Reset the population
+                    #     self.reset_population()
+
                 # If we got an improvement, go back to original mutation rate
                 else:
                     self.weight_mutate_rate = self.weight_mutate_rate_init
