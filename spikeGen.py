@@ -70,10 +70,12 @@ def row_spike(image, T=100):
         row_l = []
         for pix in row:
             for i in range(bit_pr_pix):
-                if pix > random.uniform(0, 1):
+                if pix > (1-(i/bit_pr_pix)):
                     row_l.append(1)
                 else:
                     row_l.append(0)
+
+
         for i in range(len(row_l), T):
             row_l.append(0)
         spike_train.append(row_l)

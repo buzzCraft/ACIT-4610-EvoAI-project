@@ -318,7 +318,7 @@ class Network:
 
         preds = self.batch_prediction
         # Good pred with 'macro' and 'weighted' average, should probably not use 'micro'
-        self.current_f1_score = f1_score(self.batch_target, preds, average='weighted')
+        self.current_f1_score = f1_score(self.batch_target, self.confusion_predicted, average='weighted')
         return self.current_f1_score
     def get_prediction_score(self):
 
