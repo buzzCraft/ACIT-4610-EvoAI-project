@@ -37,9 +37,6 @@ def pop_eve(spike_train_length, population, batch_size=10, resize = 0, ran = Fal
             # Reset spike train history for all networks
             population.reset_population()
 
-            # start = time.time()
-            # TODO Generate all spike trains at once and store them in a text file ( not sure if needed )
-            # Then read it in when needed
             # Genereating a spike train for image p
             if ran:
                 pick = random.randint(0, len(train_X)-1)
@@ -50,9 +47,7 @@ def pop_eve(spike_train_length, population, batch_size=10, resize = 0, ran = Fal
 
             # Update the networks with the spike train
             population.update_population(spikeTrain, train_y[pick])
-            # end = time.time()
-            # delta = end - start
-            # print(f"Image {p} took {delta} seconds to process")
+
 
         # Select the best networks
         population.evolve_population()
@@ -96,7 +91,6 @@ def load_network(filename="network.pkl"):
 
 
 if __name__ == '__main__':
-    import time
     resize = 2
 
     # Get total pixels in an image
@@ -104,17 +98,7 @@ if __name__ == '__main__':
     # nr_pix = int(train_X.shape[1] / resize)
 
     spike_train_length = 50
-
-    # Nr_input neurons -> number of pixels in an image
-    # pop = init(nr_input=nr_pix, nr_output=10, nr_hidden=10, number_of_networks=20, train_length=spike_train_length)
-    # evolve3(spike_train_length)
-    # initialize(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05)
-    # evolve2()
-
-    # Bruker en ny måte å regne på.. Ikke implementert evolusjon enda
-    # n = init2(nr_input=nr_pix, nr_hidden=20, nr_output=10, threshold=5, number_of_networks=20, leakage=0.05, train_length=spike_train_length)
-    # evolve3(spike_train_length,n)
-    batch_size = 400
+    batch_size = 1000
     pop = population.Population(nr_inputs=nr_pix, nr_hidden=[15], nr_outputs=10, size=10,
                                 spike_train_length=spike_train_length, batch_size=batch_size, leakage=0.1, threshold=1.2, tournament_size=5)
     pop.create_population()

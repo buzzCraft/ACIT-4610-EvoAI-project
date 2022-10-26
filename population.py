@@ -124,17 +124,6 @@ class Population():
             output.append(network.get_output())
         return output
 
-    # def get_population_prediction(self):
-    #     """
-    #     Get the prediction of the population
-    #     :param answer: The correct answer
-    #     :return: The prediction
-    #     """
-    #     predictions = []
-    #     for network in self.networks:
-    #         # p = network.get_prediction_score()
-    #         predictions.append(network.get_prediction_score(self.batch_size)/self.batch_size)
-    #     return predictions
     def get_best_scores(self):
         # Find best current_log_loss
         newlist = sorted(self.networks, key=lambda x: x.current_log_loss, reverse=False)
@@ -241,35 +230,35 @@ class Population():
 
 
 
-    def tournament_selection(self, nr_of_tournaments):
-        """
-        Tournament selection
-        :return: The survivors of the tournament
-        """
-        # First shuffle the population
+    # def tournament_selection(self, nr_of_tournaments):
+    #     """
+    #     Tournament selection
+    #     :return: The survivors of the tournament
+    #     """
+    #     # First shuffle the population
+    #
+    #     # Create sublists of size nr_of_tournaments
+    #     tournament_list = list(self.__generate_tournament_lists(nr_of_tournaments))
+    #     survivors = []
+    #     for pop in tournament_list:
+    #
+    #         to = []
+    #         for network in pop:
+    #             # to.append(network.current_prediction_score)
+    #             # to.append(network.get_acc_x_prediction())
+    #             to.append(network.current_accuracy)
+    #         # to.append(pop.get_prediction_score(self.batch_size))
+    #         survivors.append(pop[to.index(max(to))])
+    #     return survivors
 
-        # Create sublists of size nr_of_tournaments
-        tournament_list = list(self.__generate_tournament_lists(nr_of_tournaments))
-        survivors = []
-        for pop in tournament_list:
-
-            to = []
-            for network in pop:
-                # to.append(network.current_prediction_score)
-                # to.append(network.get_acc_x_prediction())
-                to.append(network.current_accuracy)
-            # to.append(pop.get_prediction_score(self.batch_size))
-            survivors.append(pop[to.index(max(to))])
-        return survivors
-
-    def __generate_tournament_lists(self, nr_of_tournaments):
-        lst = self.networks
-        # First shuffle the population
-        random.shuffle(lst)
-        # # Create sublists of size nr_of_tournaments
-        subListLength = len(lst) // nr_of_tournaments
-        for i in range(0, len(lst), subListLength):
-            yield lst[i:i + subListLength]
+    # def __generate_tournament_lists(self, nr_of_tournaments):
+    #     lst = self.networks
+    #     # First shuffle the population
+    #     random.shuffle(lst)
+    #     # # Create sublists of size nr_of_tournaments
+    #     subListLength = len(lst) // nr_of_tournaments
+    #     for i in range(0, len(lst), subListLength):
+    #         yield lst[i:i + subListLength]
 
     def mutate_population(self, pop):
         """

@@ -75,10 +75,8 @@ class Neuron():
         # Mutate the weight array
         for i in range(len(self.weight)):
             if np.random.rand() < mutation_rate:
-                # self.weight[i] = np.random.uniform(-5.0, 5.0)
                 self.weight[i] += np.random.normal(0, weight_mutation_rate)
-                # self.weight[i] = self.weight[i] * (np.random.normal(-1.0, 1.0))
-                # weight * (1 + (random() * 0.2 - 0.1));
+
     def __mutate_threshold(self, mutation_rate):
         # Mutate the threshold
         if np.random.rand() < mutation_rate:
@@ -163,13 +161,6 @@ class Layer:
         for neuron in self.neurons:
             neuron.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
 
-# class Layer_numpy():
-#     def __init__(self, neurons=100, spike_train_length=100):
-#         self.neurons = []
-#         self.spike_train_length = spike_train_length
-#         self.output = np.zeros((neurons, self.spike_train_length))
-#         self.input_layer = False
-#         self.genome = []
 
 class Network:
     def __init__(self, layers=[], nr_outputs=10, spike_train_length=100, id=0, batch_size=1):
