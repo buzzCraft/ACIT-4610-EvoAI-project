@@ -57,10 +57,10 @@ def rateCodingRand2D(image, T = 100, freqHigh = 200, freqLow = 10, resize = 0):
 def img_setup(image, T=100, resize=0):
     # Function to setup the image for the spike train
     # Spike for each row
-    if resize:
+    if resize <1:
         image = (image[::resize, ::resize])
     image = norm2D(image) # Normalize the image
-    spikeTrain = []
+    # spikeTrain = []
     return np.asarray(row_spike(image, T))
 
 def row_spike(image, T=100):
@@ -82,8 +82,11 @@ def row_spike(image, T=100):
     return spike_train
 
 if __name__ == '__main__':
-    from keras.datasets import mnist
-
-    (train_X, train_y), (test_X, test_y) = mnist.load_data()
+    import gzip
+    import pickle
+    f = gzip.open('mnist.pkl.gz', 'rb')
+    data = pickle.load(f, encoding='bytes')
+    f.close()
+    (train_X, train_y), (test_X, test_y) = data
     out = img_setup(train_X[0], resize=2)
     print(out)

@@ -3,9 +3,6 @@ import random
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
-import pandas as pd
-from numba import jit, cuda
-from sklearn.metrics import log_loss
 class Population():
     def __init__(self,nr_inputs, nr_hidden, nr_outputs, size, spike_train_length, batch_size, leakage=0.1, threshold=0.5, tournament_size=2):
         """
@@ -60,8 +57,6 @@ class Population():
 
     def __create_network(self, network_id):
         # Creating input layer
-        # TODO The input layer can be the same for each networks since the weights are stored
-        # in the hidden layer
         input_layer = Layer(neurons=[],spike_train_length=self.spike_train_length)
         for i in range(self.nr_inputs):
             # For each input neuron create a neuron
@@ -71,6 +66,7 @@ class Population():
         input_layer.update_output_array()
         # Create a list to store hidden layers
         hidden_layers = []
+
         # Create the hidden layers
         layer_couter = 0
         first_hidden = True
@@ -83,7 +79,6 @@ class Population():
             layer_couter += 1
             h_l = (Layer(neurons=[], spike_train_length=self.spike_train_length))
             h_l.input_layer=False
-            # weight = np.random.uniform(-1, 1, self.nr_inputs)
 
             for i in range(nr_of_neurons):
                 weight_list = np.array([random.gauss(0, 1.5) for _ in range(nr_of_weights)])
@@ -114,6 +109,7 @@ class Population():
             network.reset()
 
     def batch_reset(self):
+        # Reset the scoring of the networks between each batch
         for network in self.networks:
             network.batch_reset()
 
@@ -135,8 +131,6 @@ class Population():
         return best_log, best_f1, best_acc
 
     def evolve_population(self, crossover = True, mutation = True):
-        crossover = True
-        mutation = True
 
         # Get the fitness of the population
         for network in self.networks:
