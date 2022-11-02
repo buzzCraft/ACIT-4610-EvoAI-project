@@ -2,11 +2,15 @@ import numpy as np
 import copy
 import time
 import random
-# from numba import njit
+from matplotlib import pyplot as plt
 from sklearn.metrics import log_loss, f1_score
 from scipy.special import softmax
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
-
+# For the regulare neural network
+def sigmoid(x):
+    return 1 / (1 + np.exp(x))
 class Neuron():
 
     def __init__(self, id, threshold=0.6, weight=[1], leakage=0.5, spike_train_length=100, bias=0):
@@ -93,6 +97,11 @@ class Neuron():
         self.leakage = genome[2]
         self.bias = genome[3]
 
+class RNuron(Neuron):
+    def neuron_update(self, input):
+
+        self.output= sigmoid(np.dot(input, self.weights))
+        return self.output
 
 class Layer:
     def __init__(self, neurons=[], spike_train_length=100):
@@ -175,6 +184,7 @@ class Network:
         self.predicted = 0
         self.batch_prediction = []
         self.current_log_loss = 0
+        self.wrong_prediction = 0
 
     def add_layer(self, layer):
         # Add a layer to the network
@@ -212,6 +222,7 @@ class Network:
         self.accuracy_counter = 0
         self.current_f1_score = 0
         self.confusion_predicted = []
+        self.wrong_prediction = 0
 
     def get_output(self):
         return self.output
@@ -242,18 +253,23 @@ class Network:
         if prediction.count(max(prediction)) == 1:
             self.predicted = prediction.index(max(prediction))
         else:
-            self.predicted = -1
-        self.confusion_predicted.append(prediction.index(max(prediction)))
+            # Choose on random one of the max indexes
+            self.predicted = random.choice([i for i, x in enumerate(prediction) if x == max(prediction)])
+            # self.predicted = -1
+        self.confusion_predicted.append(self.predicted)
         # self.predicted = random.choice([i for i, x in enumerate(prediction) if x == max(prediction)])
         self.batch_prediction.append(self.predicted)
-        if prediction.index(max(prediction)) == answer:
+        if self.predicted == answer:
             # If the answer is the only max value
             if prediction.count(max(prediction)) == 1:
                 self.accuracy_counter += 1
 
+
             # # TODO in case of tie - first spike
             else:
                 self.accuracy_counter += 1 / prediction.count(max(prediction))
+        else:
+            self.wrong_prediction += 1
 
         if sum(prediction) == 0:
             self.prediction_history.append([0, answer])
@@ -268,8 +284,8 @@ class Network:
 
         return self.accuracy_history
 
-    def get_acc_x_prediction(self):
-        return self.current_accuracy + self.current_prediction_score
+    def get_new_fit(self):
+        return (self.current_accuracy + self.current_f1_score) - self.wrong_prediction/self.batch_size
 
     def calculate_prediction_score(self):
         """
@@ -296,10 +312,8 @@ class Network:
         return softmax(array, axis=1)
 
     def get_f1_score(self):
-
-        preds = self.batch_prediction
         # Good pred with 'macro' and 'weighted' average, should probably not use 'micro'
-        self.current_f1_score = f1_score(self.batch_target, self.batch_prediction, average='weighted')
+        self.current_f1_score = f1_score(self.batch_target, self.batch_prediction, average='macro')
         return self.current_f1_score
 
     def get_prediction_score(self):
@@ -317,11 +331,40 @@ class Network:
         for i in range(len(self.layers)):
             self.layers[i].set_genome(genome[i])
 
-    def predict(self, input):
-        self.network_update(input)
-        output = self.get_output()
-        predicted = output.index(max(output))
-        return predicted
+
+    def get_pred(self):
+        return self.current_accuracy, self.current_f1_score, self.current_log_loss
+
+    def plot_output(self):
+
+        spike_train = self.get_output()
+        i = 0
+        for train in spike_train:
+            train = train + i
+            plt.plot(train, label='Neuron {}'.format(i))
+            i += 1
+        plt.title(f'Spike train for the number: {image}, epoch: {ep}')
+        plt.yticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        # plt.legend()
+        plt.show()
+        self.plot_confusion_matrix()
+
+    def plot_confusion_matrix(self):
+        cm = confusion_matrix(self.batch_target, self.confusion_predicted, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        vmin = np.min(cm)
+        vmax = np.max(cm)
+        off_diag_mask = np.eye(*cm.shape, dtype=bool)
+
+        fig = plt.figure()
+        sns.heatmap(cm, annot=True, mask=~off_diag_mask, cmap='Blues', vmin=vmin, vmax=vmax)
+        sns.heatmap(cm, annot=True, mask=off_diag_mask,vmin=vmin, vmax=vmax, cmap='Reds', cbar=False,
+                    cbar_kws=dict(ticks=[]))
+
+
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
+        plt.show()
+
 
     def __str__(self):
         return f'Network {self.id} ' \

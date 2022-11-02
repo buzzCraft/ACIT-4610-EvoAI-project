@@ -2,7 +2,6 @@ import random
 import numpy as np
 from numpy import interp
 
-# Code obtained from https://medium.com/@rmslick/neural-coding-generating-spike-trains-for-images-using-rate-coding-6bb61afef5d4
 
 
 # Normalize the input image
@@ -12,6 +11,8 @@ def norm2D(image):
 
 
 def rateCodingDeterministicPix2Spike(pVal, T = 100, freqHigh = 200, freqLow = 10):
+    # Code obtained from https://medium.com/@rmslick/neural-coding-generating-spike-trains-for-images-using-rate-coding-6bb61afef5d4
+
     # Decide the length of the spike train
     T  # ms
     freqHigh  # Spike/sec
@@ -45,8 +46,10 @@ def rateCodingRand2D(image, T = 100, freqHigh = 200, freqLow = 10, resize = 0):
     :param resize: resize the image to a smaller size 2 -> Reduce the size by 2
     :return: 2D numpy array
     """
-    if resize:
-        image = (image[::resize, ::resize])
+    if resize > 1:
+        imgesize = image.shape
+        r = int(imgesize[0]/2)
+        image = nd_resize(image, new_shape=(r,r), operation='sum')
     image = norm2D(image) # Normalize the image
     spikeTrain = []
     for row in image:
@@ -54,10 +57,47 @@ def rateCodingRand2D(image, T = 100, freqHigh = 200, freqLow = 10, resize = 0):
             spikeTrain.append(rateCodingDeterministicPix2Spike(pix, T, freqHigh, freqLow))
     return(np.asarray(spikeTrain))
 
+def nd_resize(ndarray, new_shape, operation='sum'):
+    """
+    Taken from https://stackoverflow.com/a/29042041/13484350
+    Bins an ndarray in all axes based on the target shape, by summing or
+        averaging.
+
+    Number of output dimensions must match number of input dimensions and
+        new axes must divide old ones.
+
+    Example
+    -------
+    >>> m = np.arange(0,100,1).reshape((10,10))
+    >>> n = bin_ndarray(m, new_shape=(5,5), operation='sum')
+    >>> print(n)
+
+    [[ 22  30  38  46  54]
+     [102 110 118 126 134]
+     [182 190 198 206 214]
+     [262 270 278 286 294]
+     [342 350 358 366 374]]
+
+    """
+    operation = operation.lower()
+    if not operation in ['sum', 'mean']:
+        raise ValueError("Operation not supported.")
+    if ndarray.ndim != len(new_shape):
+        raise ValueError("Shape mismatch: {} -> {}".format(ndarray.shape,
+                                                           new_shape))
+    compression_pairs = [(d, c//d) for d,c in zip(new_shape,
+                                                  ndarray.shape)]
+    flattened = [l for p in compression_pairs for l in p]
+    ndarray = ndarray.reshape(flattened)
+    for i in range(len(new_shape)):
+        op = getattr(ndarray, operation)
+        ndarray = op(-1*(i+1))
+    return ndarray
+
 def img_setup(image, T=100, resize=0):
     # Function to setup the image for the spike train
     # Spike for each row
-    if resize <1:
+    if resize >1:
         image = (image[::resize, ::resize])
     image = norm2D(image) # Normalize the image
     # spikeTrain = []
