@@ -1,6 +1,5 @@
 import numpy as np
 import copy
-import time
 import random
 from matplotlib import pyplot as plt
 from sklearn.metrics import log_loss, f1_score
@@ -23,36 +22,29 @@ class Neuron():
         self.fired = False
         self.bias = 0
 
-    # def _update(self, input, step):
-    #     self.potential += (input - self.leakage*self.potential)
-    #     if self.potential > self.threshold and not self.fired:
-    #         self.spike_train[step] = 1
-    #         self.potential = 0
-    #         self.fired = True
-    #     else:
-    #         self.spike_train[step] = 0
-    #         self.fired = False
 
     def neuron_update(self, input):
         # Take the input array, multiply it with the weight array and sum the result
-        # x = (input * self.weight[:, None])
         self.spike_train = np.zeros(len(self.spike_train))
         self.potential = 0
-        input_array = np.sum(input * self.weight[:, None], axis=0)  # +self.bias
+        input_array = np.sum(input * self.weight[:, None], axis=0)# +self.bias
+
         # Send each timestep of the input array to the neuron
         # Save the output to spike_train
-        i = 0
-        for step in input_array:
-
+        for i in range(len(input_array)):
+            step = input_array[i]
             self.potential += (step - self.leakage * self.potential)
+
             if self.potential < self.threshold or self.fired:
+                # if self.potential < 0: self.potential = 0
                 self.spike_train[i] = 0
                 self.fired = False
             else:
+
                 self.spike_train[i] = 1
                 self.potential = 0
                 self.fired = True
-            i += 1
+
 
     def get_spike_train(self):
         # Return the spike train
@@ -63,28 +55,12 @@ class Neuron():
         self.spike_train = np.zeros(len(self.spike_train))
         self.potential = 0
 
-    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.05, threshold_mutation_rate=0.5,
-               leakage_mutation_rate=0.5):
+    def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.05,):
 
         for i in range(len(self.weight)):
             if np.random.rand() < mutation_rate:
                 self.weight[i] += np.random.normal(0, weight_mutation_rate)
 
-    # def __mutate_weight(self, mutation_rate, weight_mutation_rate=0.05):
-    #     # Mutate the weight array
-    #     for i in range(len(self.weight)):
-    #         if np.random.rand() < mutation_rate:
-    #             self.weight[i] += np.random.normal(0, weight_mutation_rate)
-
-    # def __mutate_threshold(self, mutation_rate):
-    #     # Mutate the threshold
-    #     if np.random.rand() < mutation_rate:
-    #         self.threshold += np.random.uniform(-.5, .5)
-    #
-    # def __mutate_leakage(self, mutation_rate):
-    #     # Mutate the leakage
-    #     if np.random.rand() < mutation_rate:
-    #         self.leakage += np.random.uniform(-.5, .5)
 
     def get_genome_neuron(self):
         # Return the genome of the neuron
@@ -141,8 +117,7 @@ class Layer:
     def reset(self):
         # Reset the layer for a new input
         self.output = np.zeros((len(self.neurons), self.spike_train_length))
-        # for neuron in self.neurons:
-        #     neuron.reset()
+
 
     def get_number_of_neurons(self):
         return len(self.neurons)
@@ -160,7 +135,7 @@ class Layer:
     def mutate(self, mutation_rate=0.5, weight_mutation_rate=0.05, threshold_mutation_rate=0.5,
                leakage_mutation_rate=0.5):
         for neuron in self.neurons:
-            neuron.mutate(mutation_rate, weight_mutation_rate, threshold_mutation_rate, leakage_mutation_rate)
+            neuron.mutate(mutation_rate, weight_mutation_rate)
 
 
 class Network:
@@ -192,21 +167,14 @@ class Network:
 
     def network_update(self, input):
         # Send the input to each layer in the network
-        # TODO ALL COMPUTING TIME IS HERE
         for layer in self.layers:
-            # print("Starting with layer", layer)
             # Copy the output from the previous layer to the input of the next layer
             input = layer.layer_update(input)
-            # print("Done with layer", layer)
-        # TODO END OF COMPUTING TIME
-
-        # TODO Set np.array to self.output
         self.output = input
         # Check time to set np.array
-
         for i in range(len(input)):
             self.output[i] = input[i]
-        # print(self.output)
+
 
     def reset(self):
 
@@ -255,7 +223,6 @@ class Network:
         else:
             # Choose on random one of the max indexes
             self.predicted = random.choice([i for i, x in enumerate(prediction) if x == max(prediction)])
-            # self.predicted = -1
         self.confusion_predicted.append(self.predicted)
         # self.predicted = random.choice([i for i, x in enumerate(prediction) if x == max(prediction)])
         self.batch_prediction.append(self.predicted)
@@ -264,8 +231,6 @@ class Network:
             if prediction.count(max(prediction)) == 1:
                 self.accuracy_counter += 1
 
-
-            # # TODO in case of tie - first spike
             else:
                 self.accuracy_counter += 1 / prediction.count(max(prediction))
         else:
@@ -295,13 +260,11 @@ class Network:
             [x[0] for x in self.prediction_history[-self.batch_size:]]) / self.batch_size
         self.current_accuracy = self.accuracy_counter / self.batch_size
         self.accuracy_counter = 0
-        # self.log_loss = self.get_log_loss()
         self.f1_score = self.get_f1_score()
         self.log_loss = self.get_log_loss()
 
     def get_log_loss(self):
         soft = self.soft_max(self.batch_output)
-        # TODO convert self.batch_target to a array of 0 and index of the correct answer to 1
         batch_answer = np.zeros((len(self.batch_target), 10))
         for i in range(len(self.batch_target)):
             batch_answer[i][self.batch_target[i]] = 1
@@ -313,7 +276,7 @@ class Network:
 
     def get_f1_score(self):
         # Good pred with 'macro' and 'weighted' average, should probably not use 'micro'
-        self.current_f1_score = f1_score(self.batch_target, self.batch_prediction, average='macro')
+        self.current_f1_score = f1_score(self.batch_target, self.batch_prediction, average='weighted')
         return self.current_f1_score
 
     def get_prediction_score(self):
@@ -369,7 +332,7 @@ class Network:
     def __str__(self):
         return f'Network {self.id} ' \
                f'\n with a acc score of {self.current_accuracy}' \
-               f'Accuracy counter: {self.accuracy_counter}, batch size: {self.batch_size}' \
+               f'\n and a F1 score of {self.current_f1_score}' \
 
     def __gt__(self, other):
         # return self.current_accuracy < other.current_accuracy

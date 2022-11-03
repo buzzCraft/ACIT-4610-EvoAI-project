@@ -48,7 +48,7 @@ def rateCodingRand2D(image, T = 100, freqHigh = 200, freqLow = 10, resize = 0):
     """
     if resize > 1:
         imgesize = image.shape
-        r = int(imgesize[0]/2)
+        r = int(imgesize[0]/resize)
         image = nd_resize(image, new_shape=(r,r), operation='sum')
     image = norm2D(image) # Normalize the image
     spikeTrain = []
@@ -94,14 +94,7 @@ def nd_resize(ndarray, new_shape, operation='sum'):
         ndarray = op(-1*(i+1))
     return ndarray
 
-def img_setup(image, T=100, resize=0):
-    # Function to setup the image for the spike train
-    # Spike for each row
-    if resize >1:
-        image = (image[::resize, ::resize])
-    image = norm2D(image) # Normalize the image
-    # spikeTrain = []
-    return np.asarray(row_spike(image, T))
+
 
 def row_spike(image, T=100):
     bit_pr_pix = int(T/len(image[0]))

@@ -27,8 +27,8 @@ class Population():
         self.batch_size = batch_size
         self.tournament_size = tournament_size
         self.mutation_rate = 0.3
-        self.weight_mutate_rate = 0.1
-        self.weight_mutate_rate_init = self.weight_mutate_rate
+        self.mutation_factor = 0.1
+        self.weight_mutate_rate_init = self.mutation_factor
 
         ####
         self.genomes = []
@@ -127,8 +127,10 @@ class Population():
         # Find best current_log_loss
         newlist = sorted(self.networks, key=lambda x: x.current_log_loss, reverse=False)
         best_log = newlist[0].current_log_loss
+        # Best F1
         newlist = sorted(self.networks, key=lambda x: x.current_f1_score, reverse=True)
         best_f1 = newlist[0].current_f1_score
+        # Best accuracy
         newlist = sorted(self.networks, key=lambda x: x.current_accuracy, reverse=True)
         best_acc = newlist[0].current_accuracy
         return best_log, best_f1, best_acc
@@ -143,11 +145,10 @@ class Population():
         self.helper_plot[0].append(l)
         self.helper_plot[1].append(f)
         self.helper_plot[2].append(a)
-        # self.plot_overall_best()
         # Sort the networks by their prediction score
 
         self.networks = sorted(self.networks, key=lambda x: x.current_f1_score, reverse=True)
-        # self.networks = sorted(self.networks, key=lambda x: x.get_new_fit(), reverse=True)
+        # self.networks = sorted(self.networks, key=lambda x: x.current_accuracy, reverse=True)
         # self.networks = sorted(self.networks, key=lambda x: x.current_log_loss, reverse=False)
         # Get the best network and append score for plotting
         self.best_acc_network = self.networks[0]
@@ -186,10 +187,8 @@ class Population():
                     if net1.current_f1_score < net3.current_f1_score:
                         net1 = net3
                     # Get the best of net3 and net4
-                    if net2.current_accuracy < net4.current_accuracy:
+                    if net2.current_log_loss > net4.current_log_loss:
                         net2 = net4
-                    # else:
-                    #     net2 = net3
 
                     # Do crossover on net1 and net2
                     net1, net2 = self.crossover(net1.get_genome(), net2.get_genome())
@@ -197,17 +196,11 @@ class Population():
                     self.networks[-i].set_genome(net2)
         if mutation:
             for net in self.networks:
-                net.mutate_network(self.mutation_rate, self.weight_mutate_rate)
+                net.mutate_network(self.mutation_rate, self.mutation_factor)
             self.networks.remove(random.choice(self.networks))
             self.networks.append(best_networks[0])
             print(best_networks[0])
 
-    def remove_net_chosen(self,prob, net, prob_sum, nets):
-        prob.remove(net.current_f1_score/prob_sum)
-        if sum(prob) == 0:
-            prob = [1/len(prob) for x in prob]
-        nets.remove(net)
-        return nets, prob
     def mutate_population(self, pop):
         """
         Mutate the population
@@ -238,27 +231,28 @@ class Population():
         :param genome2: The second genome
         :return: The crossovered genome
         """
-        # for i in range(len(genome1)):
-        # for i in range(1,3):
-        #     for u in range(len(genome1[i])):
-        #         for x in range(len(genome1[i][u])):
-        #             if type(genome1[i][u][x]) == np.ndarray:
-        #                 for y in range(len(genome1[i][u][x])):
-        #                     if random.uniform(0, 1) > 0.5:
-        #                         tmp = genome1[i][u][x][y]
-        #                         genome1[i][u][x][y] = genome2[i][u][x][y]
-        #                         genome2[i][u][x][y] = tmp
-        # return genome1, genome2
-        for i in range(1,3):
+
+        # Skip the input layer
+        for i in range(1,len(genome1)):
             for u in range(len(genome1[i])):
                 for x in range(len(genome1[i][u])):
                     if type(genome1[i][u][x]) == np.ndarray:
                         for y in range(len(genome1[i][u][x])):
-                            tmp = genome1
-                            cr = np.random.randint(len(genome1[i][u][x]))
-                            # Use cr as the crossover point
-                            genome1[i][u][x] = np.concatenate((genome1[i][u][x][:cr], genome2[i][u][x][cr:]), axis=0)
+                            if random.uniform(0, 1) > 0.5:
+                                tmp = genome1[i][u][x][y]
+                                genome1[i][u][x][y] = genome2[i][u][x][y]
+                                genome2[i][u][x][y] = tmp
         return genome1, genome2
+        # for i in range(1,len(genome1)):
+        #     for u in range(len(genome1[i])):
+        #         for x in range(len(genome1[i][u])):
+        #             if type(genome1[i][u][x]) == np.ndarray:
+        #                 for y in range(len(genome1[i][u][x])):
+        #                     tmp = genome1
+        #                     cr = np.random.randint(len(genome1[i][u][x]))
+        #                     # Use cr as the crossover point
+        #                     genome1[i][u][x] = np.concatenate((genome1[i][u][x][:cr], genome2[i][u][x][cr:]), axis=0)
+        # return genome1, genome2
 
 
     def plot_best_network(self, image, ep):
